@@ -11,13 +11,14 @@
 
 ## 2. 開啟 Firestore 資料庫
 
-1. 左側選單 → **Build → Firestore Database** → 「建立資料庫」。
-2. 位置選 **asia-east1（台灣）**。
-3. 模式先選「正式版模式（production mode）」，第 5 步會貼上規則。
+1. 左側選單找 **Firestore**（新版介面在「Databases & Storage」底下，舊版在「Build」底下）→「建立資料庫（Create database）」。
+2. 如果問你版本（edition），選 **Standard**。
+3. 位置選 **asia-east1（台灣）**。位置建立後不能改。
+4. 規則模式選「正式版模式（Production mode）」，第 5 步會貼上規則。
 
 ## 3. 開啟登入方式
 
-左側 **Build → Authentication** → 「開始使用」→「Sign-in method」，啟用以下兩種：
+左側選單找 **Authentication**（可能在「Build」或「Security」分類下）→ 「開始使用」→「Sign-in method」，啟用以下兩種：
 
 - **匿名（Anonymous）**：旅伴打開連結就能自動登入，不必註冊。
 - **Google**：只有主辦人（你）會用。
@@ -72,7 +73,7 @@ service cloud.firestore {
       match /{col}/{docId} {
         allow read: if request.auth != null;
         allow write: if request.auth != null
-          && col in ['spots','stops','days','flights','transfers','hotels','todoGroups','todos','expenses']
+          && col in ['spots','stops','days','flights','transfers','hotels','todoGroups','todos','expenses','members']
           && exists(/databases/$(database)/documents/trips/$(tripId));
       }
     }
@@ -101,7 +102,8 @@ https://你的帳號.github.io/trips/
 **權限分工**
 
 - **大家都能改**：景點、每日行程（時間／時段／候選）、分帳、待辦、航班、接送、住宿。
-- **只有主辦人能改**：旅程名稱與日期、城市、幣別與匯率、配色、頭像風格、景點類別、旅伴名單、建立／刪除旅程。
+- **只有主辦人能改**：旅程名稱與日期、城市、幣別與匯率、配色、頭像風格、景點類別、建立／刪除旅程。
+- **旅伴名單**：旅伴可以自己加入、改自己的名字和頭像；主辦人可以管理全部。
 
 **小提醒**
 

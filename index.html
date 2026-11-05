@@ -663,7 +663,7 @@ body.editing .stay-ed{display:block}
   .day-map-wrap{position:relative;top:0;order:-1}
   .day-map{height:300px}
 }
-html,body{overflow-x:hidden}
+body{overflow-x:clip}
 .tabbar{transform:translateZ(0);will-change:transform}
 body.typing .tabbar{display:none}
 @media (max-width:640px){
@@ -675,20 +675,46 @@ body.typing .tabbar{display:none}
   .count,.now-w{min-height:138px}
 }
 
+/* ---------- v6: sticky header group / search / avatars ---------- */
+.topwrap{position:sticky;top:0;z-index:900}
+.top{position:relative;top:auto}
+.edit-banner{position:relative;top:auto}
+.search-bar{display:flex;gap:8px;align-items:center;padding:8px clamp(16px,4vw,40px);background:color-mix(in srgb,var(--bg) 94%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--hair)}
+.search-bar[hidden]{display:none}
+.search-bar .search{flex:1;max-width:560px}
+.search input::-webkit-search-cancel-button{display:none}
+.q-note{display:flex;align-items:center;gap:8px;font-size:13px;margin:-4px 0 14px;color:var(--ink2)}
+.q-note svg.i{width:15px;height:15px;color:var(--pop)}
+.chip svg.i{width:13px;height:13px}
+.sec-head h2{margin-top:2px}
+.owner-hint{display:flex;gap:8px;align-items:flex-start;margin-top:4px;padding:10px 12px;border:1.3px dashed var(--ink);border-radius:12px;font-size:12.5px;color:var(--ink2);background:var(--bg)}
+.owner-hint svg.i{width:16px;height:16px;color:var(--pop);margin-top:1px}
+.chip.add{border-style:dashed}
+/* avatars always centered */
+.ava{display:inline-grid;place-items:center;padding:0;line-height:0}
+.ava svg{display:block;width:92%!important;height:92%!important;margin:0!important}
+.ava.st-sticker svg{width:112%!important;height:112%!important}
+.ava.sm{width:24px;height:24px}
+.chip .ava.sm,.pick .ava.sm{margin:-3px 0}
+
 </style>
 </head>
 <body>
+<div class="topwrap">
 <header class="top">
   <a class="brand" href="#overview"><span class="brand-mark" id="brandMark">H</span><span class="brand-name" id="brandName">旅行手帖</span></a><span class="sync" id="syncDot" hidden><i></i><span></span></span>
   <nav class="nav" id="nav">
     <a href="#overview">總覽</a><a href="#days">行程</a><a href="#spots">景點</a><a href="#stay">住宿</a><a href="#todo">待辦</a><a href="#split">分帳</a>
   </nav>
   <div class="top-tools">
+    <button class="ibtn" data-act="search-toggle" aria-label="搜尋景點"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></button>
     <button class="btn edit-toggle" data-act="edit-toggle"><svg class="i" viewBox="0 0 24 24"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg><span class="lb" id="editLabel">編輯</span></button>
     <button class="ibtn" data-act="open-drawer" aria-label="後台設定"><svg class="i" viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg></button>
   </div>
 </header>
-<div class="edit-banner">編輯模式 · 每張卡片會出現 <b>鉛筆／垃圾桶</b>，各區也能新增項目。改完按右上「完成」。</div>
+<div class="search-bar" id="searchBar" hidden><label class="search"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><input id="gq" type="search" placeholder="搜尋景點名稱、地址、備註…" enterkeyhint="search"></label><button class="btn sm" data-act="search-clear">取消</button></div>
+<div class="edit-banner">編輯模式：卡片下方會出現「編輯」「刪除」，各區也能新增項目。改完按右上「完成」。</div>
+</div>
 
 <main class="wrap">
   <div id="notice"></div>
@@ -712,7 +738,7 @@ body.typing .tabbar{display:none}
 
   <section class="sec" id="flights" data-view="overview">
     <div class="sec-head">
-      <div><span class="eyebrow">01 · Flights</span><h2>航班小卡<em>Flights</em></h2></div>
+      <div><span class="eyebrow">01 · Flights</span><h2>航班小卡</h2></div>
       <div class="sec-tools"><button class="btn sm" data-act="fl-collapse" id="flToggle">收合</button><button class="btn sm edit-only" data-act="flight-add">＋ 航班</button><button class="btn sm edit-only" data-act="transfer-add">＋ 接送／交通</button></div>
     </div>
     <div id="flightsBody"></div>
@@ -720,7 +746,7 @@ body.typing .tabbar{display:none}
 
   <section class="sec" id="weather" data-view="overview">
     <div class="sec-head">
-      <div><span class="eyebrow">02 · Weather</span><h2>天氣預報<em>Weather</em></h2><p id="weatherSub">即時資料來自 Open-Meteo，免金鑰、每 30 分鐘更新</p></div>
+      <div><span class="eyebrow">02 · Weather</span><h2>天氣預報</h2><p id="weatherSub">即時資料來自 Open-Meteo，免金鑰、每 30 分鐘更新</p></div>
       <div class="sec-tools"><button class="btn sm" data-act="wx-refresh"><svg class="i" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg>重新整理</button></div>
     </div>
     <div class="weather" id="weatherBody"></div>
@@ -728,7 +754,7 @@ body.typing .tabbar{display:none}
 
   <section class="sec" id="days" data-view="days">
     <div class="sec-head">
-      <div><span class="eyebrow">03 · Itinerary</span><h2>每日時間軸<em>Day by Day</em></h2><p>點行程卡片，右側地圖會飛到該地點；地圖上的虛線是當天的移動順序。</p></div>
+      <div><span class="eyebrow">03 · Itinerary</span><h2>每日時間軸</h2></div>
     </div>
     <div class="day-tabs" id="dayTabs"></div>
     <div class="day-grid">
@@ -742,7 +768,7 @@ body.typing .tabbar{display:none}
 
   <section class="sec" id="spots" data-view="spots">
     <div class="sec-head">
-      <div><span class="eyebrow">04 · Pocket List</span><h2>景點口袋名單<em>Places</em></h2><p>依類別篩選；類別可在編輯模式或後台自由新增、改色、改圖示。</p></div>
+      <div><span class="eyebrow">04 · Pocket List</span><h2>景點口袋名單</h2></div>
       <div class="sec-tools"><button class="btn sm edit-only" data-act="cat-manage">管理類別</button><button class="btn sm solid edit-only" data-act="spot-add">＋ 新增景點</button></div>
     </div>
     <div id="spotsBody"></div>
@@ -750,7 +776,7 @@ body.typing .tabbar{display:none}
 
   <section class="sec" id="stay" data-view="stay">
     <div class="sec-head">
-      <div><span class="eyebrow">05 · Stay</span><h2>住宿小卡<em>Stay</em></h2></div>
+      <div><span class="eyebrow">05 · Stay</span><h2>住宿小卡</h2></div>
       <div class="sec-tools"><button class="btn sm edit-only" data-act="hotel-add">＋ 新增住宿</button></div>
     </div>
     <div class="stays" id="stayBody"></div>
@@ -758,7 +784,7 @@ body.typing .tabbar{display:none}
 
   <section class="sec" id="todo" data-view="todo">
     <div class="sec-head">
-      <div><span class="eyebrow">06 · Checklist</span><h2>出發前待辦<em>To-do</em></h2><p>勾選狀態保存在這台裝置的瀏覽器裡。</p></div>
+      <div><span class="eyebrow">06 · Checklist</span><h2>出發前待辦</h2><p>勾選狀態保存在這台裝置的瀏覽器裡。</p></div>
       <div class="sec-tools"><button class="btn sm edit-only" data-act="group-add">＋ 新增清單</button><button class="btn sm" data-act="todo-reset">全部取消勾選</button></div>
     </div>
     <div id="todoBody"></div>
@@ -766,7 +792,7 @@ body.typing .tabbar{display:none}
 
   <section class="sec" id="split" data-view="split">
     <div class="sec-head">
-      <div><span class="eyebrow">07 · Split</span><h2>旅費分帳本<em>Expenses</em></h2><p>記錄誰先付、誰要分，系統自動算出最少的轉帳次數。</p></div>
+      <div><span class="eyebrow">07 · Split</span><h2>旅費分帳本</h2><p>記錄誰先付、誰要分，系統自動算出最少的轉帳次數。</p></div>
     </div>
     <div class="split" id="splitBody"></div>
   </section>
@@ -1161,16 +1187,16 @@ const CFG=window.FIREBASE_CONFIG&&window.FIREBASE_CONFIG.projectId?window.FIREBA
 const FB_SDK='https://www.gstatic.com/firebasejs/10.12.2/';
 const qsTrip=new URLSearchParams(location.search).get('t');
 const CLOUD={on:!!CFG,ready:false,user:null,tripId:null,ownerUid:null,owner:true,db:null,known:{},knownMeta:null,cache:{},loaded:new Set(),metaLoaded:false,status:CFG?'connecting':'local',myTrips:null,missing:false};
-const COLS=['spots','stops','days','flights','transfers','hotels','todoGroups','todos','expenses'];
-const META_KEYS=['name','city','cityLocal','country','eyebrow','greeting','start','end','center','zoom','currency','climateNote','theme','avaStyle','categories','members','isSample'];
+const COLS=['spots','stops','days','flights','transfers','hotels','todoGroups','todos','expenses','members'];
+const META_KEYS=['name','city','cityLocal','country','eyebrow','greeting','start','end','center','zoom','currency','climateNote','theme','avaStyle','categories','isSample'];
 const stable=v=>{if(Array.isArray(v))return '['+v.map(stable).join(',')+']';if(v&&typeof v==='object')return '{'+Object.keys(v).filter(k=>v[k]!==undefined).sort().map(k=>JSON.stringify(k)+':'+stable(v[k])).join(',')+'}';return JSON.stringify(v===undefined?null:v)};
 const cleanObj=o=>JSON.parse(JSON.stringify(o));
 const isOwnerUser=()=>!!(CLOUD.user&&!CLOUD.user.isAnonymous);
 const inCloudTrip=()=>CLOUD.on&&!!CLOUD.tripId;
 
 function toDocs(t){
-  const o={spots:[],stops:[],days:[],flights:[],transfers:[],hotels:[],todoGroups:[],todos:[],expenses:[]};
-  ['spots','flights','transfers','hotels','expenses'].forEach(k=>t[k].forEach((x,i)=>o[k].push({...x,o:i})));
+  const o={spots:[],stops:[],days:[],flights:[],transfers:[],hotels:[],todoGroups:[],todos:[],expenses:[],members:[]};
+  ['spots','flights','transfers','hotels','expenses','members'].forEach(k=>t[k].forEach((x,i)=>o[k].push({...x,o:i})));
   t.days.forEach((d,di)=>{o.days.push({id:'d'+di,title:d.title||'',tag:d.tag||'',area:d.area||'',o:di});d.stops.forEach((s,i)=>o.stops.push({...s,day:di,o:i}))});
   (t._orphans||[]).forEach(s=>o.stops.push(s));
   t.todos.forEach((g,gi)=>{o.todoGroups.push({id:g.id,title:g.title||'',o:gi});g.items.forEach((it,i)=>o.todos.push({...it,g:g.id,o:i}))});
@@ -1181,6 +1207,7 @@ function metaOf(t){const m={};META_KEYS.forEach(k=>{if(t[k]!==undefined)m[k]=t[k
 function fromCloud(t){
   const c=CLOUD.cache,srt=k=>Object.values(c[k]||{}).sort((a,b)=>(a.o??0)-(b.o??0)||String(a.id).localeCompare(String(b.id))),strip=d=>{const x={...d};delete x.o;return x};
   ['spots','flights','transfers','hotels','expenses'].forEach(k=>{if(c[k])t[k]=srt(k).map(strip)});
+  if(c.members&&Object.keys(c.members).length)t.members=srt('members').map(strip);
   syncDays(t);
   if(c.days)t.days.forEach((d,i)=>{const x=c.days['d'+i]||{};d.title=x.title||'';d.tag=x.tag||'';d.area=x.area||''});
   if(c.stops){t.days.forEach(d=>d.stops=[]);t._orphans=[];srt('stops').forEach(s=>{const di=s.day;if(t.days[di]){const x=strip(s);delete x.day;t.days[di].stops.push(x)}else t._orphans.push(s)})}
@@ -1216,7 +1243,7 @@ function subscribe(tid){
   ref.onSnapshot(snap=>{
     if(!snap.exists){if(!CLOUD.metaLoaded){CLOUD.missing=true;setSync('error');renderNotice()}return}
     CLOUD.missing=false;const d=snap.data();CLOUD.ownerUid=d.ownerUid;const m={};META_KEYS.forEach(k=>{if(d[k]!==undefined)m[k]=d[k]});
-    CLOUD.knownMeta=stable(cleanObj(m));Object.assign(T(),m);CLOUD.metaLoaded=true;updateOwner();fromCloud(T());checkReady();inboundRender();
+    CLOUD.knownMeta=stable(cleanObj(m));Object.assign(T(),m);if(Array.isArray(d.members)&&!(CLOUD.cache.members&&Object.keys(CLOUD.cache.members).length))T().members=d.members;CLOUD.metaLoaded=true;updateOwner();fromCloud(T());checkReady();inboundRender();
   },e=>{setSync('error');toast('讀取旅程失敗：'+(e.code||''))});
   COLS.forEach(col=>ref.collection(col).onSnapshot(qs=>{
     const map={},kn={};qs.docs.forEach(doc=>{const d=doc.data();d.id=doc.id;map[doc.id]=d;kn[doc.id]=stable(cleanObj(d))});
@@ -1363,7 +1390,7 @@ function renderNotice(){
   const t=T();let h='';
   if(pendingUpdate&&!CLOUD.on)h+=`<div class="sample-note">${ic('download')}<span>這個網頁有<b>較新的旅程資料</b>（旅伴更新過）。載入後你記的分帳與勾選會保留。</span><button class="btn sm solid" data-act="apply-update">載入更新</button><button class="btn sm ghost" data-act="skip-update">先不要</button></div>`;
   if(CLOUD.missing)h+=`<div class="sample-note">${ic('x')}<span>找不到這個旅程（網址可能打錯，或已被主辦人刪除）。</span></div>`;
-  if(inCloudTrip()&&CLOUD.metaLoaded&&!myId()&&t.members.length)h+=`<div class="sample-note who">${ic('users')}<span><b>你是哪一位？</b>選一下，記帳時會自動帶入你。</span><span class="who-list">${t.members.map(m=>`<button class="chip" data-act="set-me" data-id="${m.id}">${avaHtml(m.animal,'sm')}${esc(m.name)}</button>`).join('')}</span></div>`;
+  if(inCloudTrip()&&CLOUD.metaLoaded&&!myId())h+=`<div class="sample-note who">${ic('users')}<span><b>你是哪一位？</b>選一下，記帳時會自動帶入你。</span><span class="who-list">${t.members.map(m=>`<button class="chip" data-act="set-me" data-id="${m.id}">${avaHtml(m.animal,'sm')}${esc(m.name)}</button>`).join('')}<button class="chip add" data-act="join-me">${ic('plus')}不在名單上？自己加入</button></span></div>`;
   if(CLOUD.on&&!CLOUD.tripId&&CLOUD.status!=='local')h+=`<div class="sample-note">${ic('globe')}<span>這是<b>本機草稿</b>，還沒上傳。主辦人在後台用 Google 登入後，按「上傳成共編旅程」就會得到分享連結。</span><button class="btn sm" data-act="open-drawer">打開後台</button></div>`;
   if(t.isSample&&!S.ui.hideSample&&CLOUD.owner)h+=`<div class="sample-note">${ic('pencil')}<span>目前是<b>範例資料</b>：日期、航班、住宿都是示意，打開右上「編輯」或後台就能改成你們的。</span><button class="btn sm" data-act="dismiss-sample">知道了</button></div>`;
   $('#notice').innerHTML=h;
@@ -1542,9 +1569,9 @@ function renderSpots(){
       </div>
       ${edbar('spot-edit','spot-del',s.id,`<button class="btn sm sun" data-act="spot-sched" data-id="${s.id}">${ic('plus')}排進行程</button>`)}
     </div></article>`}).join('');
-  $('#spotsBody').innerHTML=`<div class="spot-bar">${chips}<div class="grow"><button class="chip ${must?'on':''}" data-act="must-toggle">${ic('star').replace('class="i "','class="i" style="width:13px;height:13px"')}只看必去</button><label class="search">${ic('search')}<input id="spotQ" placeholder="搜尋名稱、地址…" value="${esc(S.ui.q||'')}"></label></div></div>
+  $('#spotsBody').innerHTML=`<div class="spot-bar">${chips}<button class="chip ${must?'on':''}" data-act="must-toggle">${ic('star')}只看必去</button></div>
+    ${q?`<div class="q-note">${ic('search')}搜尋「${esc(S.ui.q)}」：${list.length} 個景點 <button class="btn sm" data-act="search-clear">清除</button></div>`:''}
     ${cards?`<div class="spots">${cards}</div>`:`<div class="empty">沒有符合的景點${t.spots.length?'，換個篩選看看':'。打開編輯模式新增第一個吧'}。</div>`}`;
-  const qi=$('#spotQ');qi.oninput=()=>{S.ui.q=qi.value;const pos=qi.selectionStart;renderSpots();const n=$('#spotQ');n.focus();n.setSelectionRange(pos,pos)};
 }
 
 /* ================= stay ================= */
@@ -1659,7 +1686,7 @@ const VIEWS=['overview','days','spots','stay','todo','split'];
 const layout=()=>S.ui.layout||'tabs';
 function currentView(){const h=location.hash.slice(1);if(VIEWS.includes(h))return h;if(['flights','weather'].includes(h))return 'overview';return VIEWS.includes(S.ui.view)?S.ui.view:'overview'}
 function showView(v,scroll){
-  S.ui.view=v;save();
+  S.ui.view=v;save();if(v!=='spots'){const sb=$('#searchBar');if(sb&&document.activeElement!==$('#gq'))sb.hidden=true}
   if(layout()!=='tabs')return;
   $$('.sec[data-view]').forEach(s=>s.classList.toggle('show',s.dataset.view===v));
   $$('#nav a').forEach(x=>x.classList.toggle('on',x.getAttribute('href')==='#'+v));
@@ -1831,12 +1858,12 @@ function renderDrawer(){
       <div class="btn-grid" style="margin-top:12px"><button class="btn solid" data-act="trip-new">${ic('plus')}建立新旅程</button><button class="btn" data-act="trip-edit">${ic('pencil')}編輯目前旅程</button></div>
       <p class="hint" style="margin:10px 0 0">${CLOUD.on?'用 Google 登入後，「建立新旅程」會直接建在雲端並產生分享連結。':'下次去別的城市：按「建立新旅程」輸入城市與日期，類別、旅伴、待辦可以沿用；航班、住宿、景點、行程再各自填。'}</p>
     </div>`}
-    <div class="dr-sec"><h4><span class="mono">02</span>${CLOUD.owner?'配色與版面':'版面'}</h4>
+    <div class="dr-sec"><h4><span class="mono">02</span>配色與版面</h4>
       <div class="owner-only"><div class="flabel" style="margin-bottom:8px">配色主題（跟著這個旅程）</div>
       <div class="themes">${THEMES.map(th=>`<button class="theme-opt ${t.theme===th.id?'on':''}" data-act="theme" data-id="${th.id}"><span class="sws">${th.c.map(c=>`<i style="background:${c}"></i>`).join('')}</span><span><b>${th.n}</b><small>${th.d}</small></span></button>`).join('')}</div>
       <div class="flabel" style="margin:14px 0 8px">旅伴頭像風格</div>
       <div class="ava-styles">${AVA_STYLES.map(s=>`<button class="theme-opt ${(t.avaStyle||'outline')===s.id?'on':''}" data-act="ava-style" data-id="${s.id}">${avaHtml('cat','',s.id)}<span><b>${s.n}</b><small>${s.d}</small></span></button>`).join('')}</div>
-      </div><div class="flabel" style="margin:14px 0 8px">版面（只存在這台裝置）</div>
+      </div>${CLOUD.owner?'':`<div class="owner-hint">${ic('users')}<span>配色、頭像風格、景點類別、旅伴管理是<b>主辦人</b>專用。主辦人請在上方「雲端共編」按「主辦人登入（Google）」，登入後就會出現。</span></div>`}<div class="flabel" style="margin:14px 0 8px">版面（只存在這台裝置）</div>
       <div class="seg"><button class="${layout()==='tabs'?'on':''}" data-act="layout" data-m="tabs">App 分頁</button><button class="${layout()==='page'?'on':''}" data-act="layout" data-m="page">一頁式長頁</button></div>
       <p class="hint" style="margin:8px 0 0">App 分頁：點下方（桌機在上方）按鈕切換內容，適合旅途中用手機查。一頁式：全部內容往下滑，適合出發前整體檢查。</p>
     </div>
@@ -1861,7 +1888,8 @@ function cloudSection(t){
     <div class="hint" style="color:var(--ink)">身分：<b>${role}</b>${logged?`（${esc(u.displayName||u.email||'Google 帳號')}）`:''}</div>
     ${inCloudTrip()?`<div class="share-box"><input class="inp" readonly value="${esc(shareUrl(CLOUD.tripId))}" id="shareIn"><button class="btn sm solid" data-act="copy-share">${ic('copy')}複製</button></div>
       <p class="hint" style="margin:6px 0 0">把這個連結傳給旅伴，大家打開就能一起編輯景點、行程、分帳和待辦。${CLOUD.owner?'旅程設定、配色、類別、旅伴名單只有你能改。':'旅程設定由主辦人管理。'}</p>`:''}
-    ${inCloudTrip()&&t.members.length?`<div class="flabel" style="margin:12px 0 6px">我是誰（記帳預設付款人）</div><div class="pick">${t.members.map(m=>`<button class="${myId()===m.id?'on':''}" data-act="set-me" data-id="${m.id}">${avaHtml(m.animal,'sm')}${esc(m.name)}</button>`).join('')}</div>`:''}
+    ${inCloudTrip()?`<div class="flabel" style="margin:12px 0 6px">我是誰（記帳預設付款人）</div><div class="pick">${t.members.map(m=>`<button class="${myId()===m.id?'on':''}" data-act="set-me" data-id="${m.id}">${avaHtml(m.animal,'sm')}${esc(m.name)}</button>`).join('')}</div>
+      <button class="btn sm" style="margin-top:8px" data-act="edit-me">${ic('pencil')}${myId()?'修改我的名字／頭像':'自己加入旅伴名單'}</button>`:''}
     ${logged&&!inCloudTrip()?`<button class="btn mango" style="margin-top:12px;width:100%;justify-content:center" data-act="upload-trip">${ic('upload')}把「${esc(t.name)}」上傳成共編旅程</button>`:''}
     ${logged&&CLOUD.myTrips?`<div class="flabel" style="margin:14px 0 4px">我建立的雲端旅程</div>${CLOUD.myTrips.map(x=>`<div class="trip-row ${x.id===CLOUD.tripId?'cur':''}"><div class="nm"><b>${esc(x.name)}</b><small>${esc(x.city||'')} · ${x.start||''}～${x.end?md(x.end):''}</small></div>${x.id!==CLOUD.tripId?`<a class="btn sm" href="${esc(shareUrl(x.id))}">開啟</a>`:''}<button class="ibtn sm" title="複製分享連結" data-act="copy-share" data-id="${x.id}">${ic('link')}</button></div>`).join('')||'<div class="hint">還沒有雲端旅程</div>'}
       <button class="btn solid" style="margin-top:10px" data-act="trip-new">${ic('plus')}建立新的雲端旅程</button>`:''}
@@ -1934,8 +1962,11 @@ const A={
  'cat-del':el=>{const t=T(),c=t.categories.find(x=>x.id===el.dataset.id),n=t.spots.filter(s=>s.cat===c.id).length;
    if(n)return toast(`還有 ${n} 個景點屬於「${c.name}」，請先改到其他類別`);confirmBox(`刪除類別「${esc(c.name)}」？`,()=>{T().categories=T().categories.filter(x=>x.id!==c.id);commit()},'刪除')},
  'mem-add':()=>editSimple('member','members',null,'旅伴',{animal:ANIMAL_KEYS[T().members.length%ANIMAL_KEYS.length]}),
- mate:el=>{if(document.body.classList.contains('editing')&&CLOUD.owner)A['mem-edit'](el);else if(inCloudTrip()){setMe(el.dataset.id)}},
- 'set-me':el=>setMe(el.dataset.id),'mem-edit':el=>{const id=el.dataset.id,m=T().members.find(x=>x.id===id);openForm({title:'編輯旅伴',fields:F.member,data:m,onSave:o=>{if(!o.name)return false;Object.assign(T().members.find(x=>x.id===id)||{},o)}})},
+ mate:el=>{if(document.body.classList.contains('editing')&&(CLOUD.owner||el.dataset.id===myId()))A['mem-edit'](el);else if(inCloudTrip()){setMe(el.dataset.id)}},
+ 'set-me':el=>setMe(el.dataset.id),
+ 'join-me':()=>openForm({title:'加入這趟旅程',note:'輸入你的名字、選一隻代表你的動物，就會出現在旅伴名單裡，記帳時也會自動帶入你。',fields:F.member,data:{name:'',animal:ANIMAL_KEYS[T().members.length%ANIMAL_KEYS.length]},saveLabel:'加入',
+   onSave:o=>{if(!o.name){toast('請輸入名字');return false}const id=uid('m');T().members.push({id,name:o.name,animal:o.animal||'cat'});S.ui.me=S.ui.me||{};S.ui.me[T().id]=id;if(S.ui.exp)S.ui.exp.payer=id;setTimeout(()=>toast(`歡迎加入，${o.name}！`),100)}}),
+ 'edit-me':()=>{const id=myId();if(!id)return A['join-me']();A['mem-edit']({dataset:{id}})},'mem-edit':el=>{const id=el.dataset.id,m=T().members.find(x=>x.id===id);openForm({title:'編輯旅伴',fields:F.member,data:m,onSave:o=>{if(!o.name)return false;Object.assign(T().members.find(x=>x.id===id)||{},o)}})},
  'mem-del':el=>{const t=T(),id=el.dataset.id,used=t.expenses.some(e=>e.payer===id||(e.shares||[]).includes(id));if(used)return toast('這位旅伴已有分帳紀錄，無法刪除（可改名）');
    confirmBox('確定刪除這位旅伴？',()=>{t.members=t.members.filter(m=>m.id!==id);commit()},'刪除')},
  'hotel-add':()=>editHotel(null),'hotel-edit':el=>editHotel(T().hotels.find(x=>x.id===el.dataset.id)),
@@ -1970,6 +2001,8 @@ const A={
  layout:el=>{S.ui.layout=el.dataset.m;save();applyLayout();renderDrawer();toast(el.dataset.m==='tabs'?'已切換成 App 分頁':'已切換成一頁式')},
  'ava-style':el=>{T().avaStyle=el.dataset.id;commit();renderDrawer()},
  reflip:()=>{lastFlip=null;renderHero()},
+ 'search-toggle':()=>{const b=$('#searchBar'),open=b.hidden;b.hidden=!open;document.body.classList.toggle('searching',open);if(open){const i=$('#gq');i.value=S.ui.q||'';setTimeout(()=>i.focus(),30)}else if(!S.ui.q){}},
+ 'search-clear':()=>{S.ui.q='';const i=$('#gq');if(i)i.value='';renderSpots();$('#searchBar').hidden=true;document.body.classList.remove('searching')},
  'map-toggle':el=>setMap(el.dataset.k,!mapOpen(el.dataset.k)),
  'fl-collapse':()=>{S.ui.flCol=!S.ui.flCol;save();renderFlights()},
  'reset-all':()=>confirmBox('清除這台裝置上所有旅程資料，回到網頁內建的版本？（分帳與勾選都會消失）',()=>{try{localStorage.removeItem(KEY)}catch(e){}location.reload()},'清除'),
@@ -1985,6 +2018,8 @@ function navSpy(){const ids=['overview','flights','weather','days','spots','stay
 
 document.addEventListener('focusin',e=>{if(e.target.matches('input,textarea,select'))document.body.classList.add('typing')});
 document.addEventListener('focusout',()=>setTimeout(()=>{const a=document.activeElement;if(!a||!a.matches('input,textarea,select'))document.body.classList.remove('typing')},120));
+(function(){const i=$('#gq');if(!i)return;i.addEventListener('input',()=>{S.ui.q=i.value;if(i.value&&layout()==='tabs'&&S.ui.view!=='spots')location.hash='#spots';else if(i.value&&layout()!=='tabs')document.getElementById('spots').scrollIntoView({behavior:'smooth'});renderSpots()});
+  i.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();i.blur()}if(e.key==='Escape')A['search-clear']()})})();
 /* boot */
 load();if(CFG&&qsTrip&&S.trips[qsTrip])S.activeId=qsTrip;applyMapState();renderAll();applyLayout();loadWeather();navSpy();cloudBoot();
 window.addEventListener('resize',()=>{heroMap&&heroMap.invalidateSize();dayMap&&dayMap.invalidateSize()});
