@@ -720,6 +720,31 @@ body:not(.is-owner) .mate-x{display:none!important}
 .city-jump{top:48px;left:58px}
 .spot-body .edbar .btn{padding:5px 9px}
 
+/* ---------- v9: drag & drop ---------- */
+#dayLeft .scard{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.grip{display:none;color:var(--muted);cursor:grab;touch-action:none;margin:-4px -2px -4px -6px;padding:4px 2px;flex:none}
+.grip svg.i{width:16px;height:16px;fill:currentColor;stroke:none}
+body.editing .grip{display:inline-flex}
+@media (pointer:fine){#dayLeft [data-dz] .scard{cursor:grab}}
+.drag-ghost{position:fixed;z-index:3000;pointer-events:none;box-shadow:0 18px 40px -16px rgba(0,0,0,.45);opacity:.96;transition:none!important;margin:0}
+.drag-ghost .edbar{display:none!important}
+.stop.dragging{opacity:.28}
+body.is-dragging{cursor:grabbing}
+body.is-dragging *{cursor:grabbing!important}
+.drop-line{height:0;border-top:3px solid var(--pop);border-radius:3px;margin:2px 0 8px 92px;position:relative}
+.drop-line::before{content:"";position:absolute;left:-6px;top:-6.5px;width:9px;height:9px;border-radius:50%;background:var(--pop)}
+.cand-grid .drop-line{grid-column:1/-1;margin:0}
+[data-dz].dz-on{outline:2px dashed var(--pop);outline-offset:4px;border-radius:14px}
+.tl-empty{border:1.5px dashed var(--ink);border-radius:var(--r-md);padding:18px;text-align:center;color:var(--ink2);font-size:13.5px;background:color-mix(in srgb,var(--paper) 70%,transparent)}
+.tl-empty .dz-list{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap}
+.tl-empty svg.i{color:var(--pop)}
+.tl-empty .drop-line{flex-basis:100%;margin:6px 0}
+.cand-empty{grid-column:1/-1;font-size:12.5px;color:var(--muted);text-align:center;padding:10px}
+.tm .nt{color:var(--muted)}
+.tm.warn{color:#C2410C}
+.tm.warn::after{content:"!";display:inline-grid;place-items:center;width:14px;height:14px;margin-left:3px;border-radius:50%;background:#C2410C;color:#fff;font-size:10px;font-weight:800;vertical-align:1px}
+@media (max-width:640px){.drop-line{margin-left:80px}}
+
 </style>
 </head>
 <body>
@@ -1202,6 +1227,8 @@ function resolve(st){
 const SLOTS=[['morning','早上',420],['am','上午',570],['noon','中午',720],['pm','下午',870],['dusk','傍晚',1050],['night','晚上',1170],['late','深夜',1320]];
 const slotOf=k=>SLOTS.find(s=>s[0]===k);
 const hasWhen=st=>!!(st.time||slotOf(st.slot));
+const isPlanned=st=>!!(st.planned||hasWhen(st));
+const plannedList=day=>{const p=day.stops.filter(isPlanned);return day.manual?p:sortStops(p)};
 const stopRank=st=>{if(st.time){const[h,m]=st.time.split(':').map(Number);return h*60+(m||0)}const s=slotOf(st.slot);return s?s[2]:99999};
 const cityOf=id=>{const t=T();return t.cities.find(c=>c.id===id)||t.cities[0]};
 const multiCity=()=>T().cities.length>1;
@@ -1230,7 +1257,7 @@ const inCloudTrip=()=>CLOUD.on&&!!CLOUD.tripId;
 function toDocs(t){
   const o={spots:[],stops:[],days:[],flights:[],transfers:[],hotels:[],todoGroups:[],todos:[],expenses:[],members:[]};
   ['spots','flights','transfers','hotels','expenses','members'].forEach(k=>t[k].forEach((x,i)=>o[k].push({...x,o:i})));
-  t.days.forEach((d,di)=>{o.days.push({id:'d'+di,title:d.title||'',tag:d.tag||'',area:d.area||'',city:d.city||'',o:di});d.stops.forEach((s,i)=>o.stops.push({...s,day:di,o:i}))});
+  t.days.forEach((d,di)=>{o.days.push({id:'d'+di,title:d.title||'',tag:d.tag||'',area:d.area||'',city:d.city||'',manual:!!d.manual,o:di});d.stops.forEach((s,i)=>o.stops.push({...s,day:di,o:i}))});
   (t._orphans||[]).forEach(s=>o.stops.push(s));
   t.todos.forEach((g,gi)=>{o.todoGroups.push({id:g.id,title:g.title||'',o:gi});g.items.forEach((it,i)=>o.todos.push({...it,g:g.id,o:i}))});
   const map={};for(const c in o){map[c]={};o[c].forEach(d=>{map[c][d.id]=cleanObj(d)})}
@@ -1242,7 +1269,7 @@ function fromCloud(t){
   ['spots','flights','transfers','hotels','expenses'].forEach(k=>{if(c[k])t[k]=srt(k).map(strip)});
   if(c.members&&Object.keys(c.members).length)t.members=srt('members').map(strip);
   syncDays(t);
-  if(c.days)t.days.forEach((d,i)=>{const x=c.days['d'+i]||{};d.title=x.title||'';d.tag=x.tag||'';d.area=x.area||'';d.city=x.city||''});
+  if(c.days)t.days.forEach((d,i)=>{const x=c.days['d'+i]||{};d.title=x.title||'';d.tag=x.tag||'';d.area=x.area||'';d.city=x.city||'';d.manual=!!x.manual});
   if(c.stops){t.days.forEach(d=>d.stops=[]);t._orphans=[];srt('stops').forEach(s=>{const di=s.day;if(t.days[di]){const x=strip(s);delete x.day;t.days[di].stops.push(x)}else t._orphans.push(s)})}
   if(c.todoGroups&&c.todos){const items=srt('todos');t.todos=srt('todoGroups').map(g=>({id:g.id,title:g.title,items:items.filter(i=>i.g===g.id).map(i=>{const x=strip(i);delete x.g;return x})}))}
 }
@@ -1383,10 +1410,10 @@ function renderDayMap(){
   $('#dayMapLabel').textContent=`DAY ${i+1} · ROUTE`;
   if(!day)return;
   const pts=[];let n=0;
-  sortStops(day.stops).filter(st=>!hasWhen(st)).forEach(st=>{const r=resolve(st);if(!hasLL(r))return;
+  day.stops.filter(st=>!isPlanned(st)).forEach(st=>{const r=resolve(st);if(!hasLL(r))return;
     const m=L.marker([r.lat,r.lng],{icon:mkIcon(r.color,ic(r.icon),'cand',300),zIndexOffset:-50}).bindPopup(popHtml({...r,cat:'候選 · '+(r.cat||'')})).addTo(dayLayer);
     m.on('click',()=>hlStop(st.id,false));dayMarkers[st.id]=m;cands.push(r)});
-  sortStops(day.stops).filter(hasWhen).forEach(st=>{const r=resolve(st);if(!hasLL(r))return;n++;pts.push(r);
+  plannedList(day).forEach(st=>{const r=resolve(st);if(!hasLL(r))return;n++;pts.push(r);
     const m=L.marker([r.lat,r.lng],{icon:mkIcon(r.color,`<b>${n}</b>`,r.home?'home':'',n*90),zIndexOffset:n*10}).bindPopup(popHtml(r)).addTo(dayLayer);
     if(r.home)m.setIcon(mkIcon('#FFD866',`<b style="color:#3B3431">${n}</b>`,'home',n*90));
     m.on('click',()=>hlStop(st.id,false));dayMarkers[st.id]=m});
@@ -1550,25 +1577,25 @@ function renderDays(){
   const t=T();if(S.ui.day==null||S.ui.day>=t.days.length){const ti=diffDays(t.start,todayIso());S.ui.day=ti>=0&&ti<t.days.length?ti:0}
   const i=S.ui.day,today=todayIso();
   $('#dayTabs').innerHTML=`<button class="dtab add edit-only owner-only" data-act="day-add" data-pos="front">${ic('plus')}<span class="t">加在前面</span></button>`+t.days.map((d,k)=>{const ds=dayDate(t,k);return `<button class="dtab ${k===i?'on':''} ${ds===today?'today':''}" data-act="day" data-i="${k}"><span class="n">DAY ${k+1}</span><span class="t">${esc(d.title||'未命名')}</span><span class="d">${md(ds)}（${wk(ds)}）${multiCity()?` · ${esc(cityOf(d.city).name)}`:''}</span></button>`}).join('')+`<button class="dtab add edit-only owner-only" data-act="day-add" data-pos="end">${ic('plus')}<span class="t">加一天</span></button>`;
-  const day=t.days[i],ds=dayDate(t,i),all=sortStops(day.stops),stops=all.filter(hasWhen),cands=all.filter(st=>!hasWhen(st));
+  const day=t.days[i],ds=dayDate(t,i),stops=plannedList(day),cands=day.stops.filter(st=>!isPlanned(st));
   const pts=[];let n=0,dist=0;
   const card=(st,r,cand)=>{const note=st.note||r.note||'';return `<div class="scard ${cand?'cand':''}" data-act="stop-focus" data-id="${st.id}">
-        <div class="row1"><span class="cat-ic" style="--c:${r.color};${r.home?'color:var(--ink)':''}">${ic(r.icon)}</span><h4>${esc(r.name)}</h4>${r.must?'<span class="tag">必去</span>':''}
+        <div class="row1"><span class="grip" title="拖曳調整順序"><svg class="i" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.2"/><circle cx="15" cy="6" r="1.2"/><circle cx="9" cy="12" r="1.2"/><circle cx="15" cy="12" r="1.2"/><circle cx="9" cy="18" r="1.2"/><circle cx="15" cy="18" r="1.2"/></svg></span><span class="cat-ic" style="--c:${r.color};${r.home?'color:var(--ink)':''}">${ic(r.icon)}</span><h4>${esc(r.name)}</h4>${r.must?'<span class="tag">必去</span>':''}
           <span class="acts"><a class="ibtn sm plain" href="${esc(hasLL(r)?(r.url||gmap(r.lat,r.lng)):'#')}" target="_blank" rel="noopener" title="Google Maps" data-stop>${ic('nav')}</a>
           </span></div>
         ${r.local?`<div class="sub">${esc(r.local)}</div>`:''}
         ${note?`<div class="note">${esc(note)}</div>`:''}
         ${edbar('stop-edit','stop-del',st.id,'',cand?'排時段':'編輯')}
       </div>`};
-  let lastSlot=null;
+  let lastRank=-1;
   const rows=stops.map(st=>{const r=resolve(st);let num='·';if(hasLL(r)){n++;num=n;if(pts.length)dist+=km(pts[pts.length-1],r);pts.push(r)}
-    const lab=whenLabel(st),isSlot=!st.time;
+    const lab=whenLabel(st),isSlot=!st.time,rk=stopRank(st),warn=hasWhen(st)&&rk<lastRank;if(hasWhen(st))lastRank=Math.max(lastRank,rk);
     return `<li class="stop" data-sid="${st.id}" style="--c:${r.color}">
-      <div class="tm">${isSlot?`<span class="slot">${esc(lab)}</span>`:esc(lab)}</div>
+      <div class="tm ${warn?'warn':''}" ${warn?'title="這個時間比上一站早，順序可能要再調整"':''}>${!lab?'<span class="nt">—</span>':isSlot?`<span class="slot">${esc(lab)}</span>`:esc(lab)}</div>
       <div class="rail"><span class="pin" style="${r.home?'color:var(--ink)':''}">${num}</span></div>
       ${card(st,r,false)}</li>`}).join('');
-  const candHtml=cands.length?`<div class="cands"><div class="cands-h">${ic('pin')}<b>候選景點 ${cands.length}</b><span>還沒排時段，地圖上以空心標記顯示，不連路線</span></div>
-      <div class="cand-grid">${cands.map(st=>{const r=resolve(st);return `<div class="stop" data-sid="${st.id}" style="--c:${r.color}">${card(st,r,true)}</div>`}).join('')}</div></div>`:'';
+  const candHtml=day.stops.length?`<div class="cands" data-dz="cand"><div class="cands-h">${ic('pin')}<b>候選景點 ${cands.length}</b><span>長按（電腦直接拖）往上拉就能排進行程</span></div>
+      <div class="cand-grid dz-list">${cands.map(st=>{const r=resolve(st);return `<div class="stop" data-sid="${st.id}" style="--c:${r.color}">${card(st,r,true)}</div>`}).join('')||'<div class="cand-empty">把行程拖到這裡可以改回候選</div>'}</div></div>`:'';
   const far=dist>15;
   $('#dayLeft').innerHTML=`
     <div class="day-head">
@@ -1576,14 +1603,14 @@ function renderDays(){
       <div style="min-width:0;flex:1">
         <h3>${esc(day.title||'還沒取名的一天')} ${day.tag?`<span class="tag dash" style="vertical-align:3px">${esc(day.tag)}</span>`:''}</h3>
         ${multiCity()||day.area?`<div class="day-area">${ic('pin')}${multiCity()?`<b>${esc(cityOf(day.city).name)}</b>${day.area?'・':''}`:''}${esc(day.area||'')}</div>`:''}
-        <div class="day-stats"><span>已排 ${stops.length}</span><span>·</span><span>候選 ${cands.length}</span>${pts.length>1?`<span>·</span><span>路線約 ${dist.toFixed(1)} km</span>`:''}</div>
+        <div class="day-stats"><span>已排 ${stops.length}</span>${stops.length>1?'<span class="hint" style="margin-left:2px">（可拖曳排序）</span>':''}<span>·</span><span>候選 ${cands.length}</span>${pts.length>1?`<span>·</span><span>路線約 ${dist.toFixed(1)} km</span>`:''}</div>
       </div>
       <div class="day-actions">
         ${pts.length>1?`<a class="btn sm sun" href="${gdir(pts,far?'driving':'walking')}" target="_blank" rel="noopener">${ic('route')}Google 路線導航</a>`:''}
         <button class="btn sm edit-only" data-act="day-edit" data-i="${i}">${ic('pencil')}當日主題／區域</button>
       </div>
     </div>
-    ${rows?`<ol class="tl">${rows}</ol>`:(cands.length?'':`<div class="empty">這天還沒有行程。<br>打開「編輯」，可以一次放進好幾個景點當候選，再慢慢排時段。</div>`)}
+    ${rows?`<ol class="tl dz-list" data-dz="tl">${rows}</ol>`:(cands.length?`<div class="tl-empty" data-dz="tl"><div class="dz-list">${ic('route')}把下方候選景點拖到這裡，排出今天的順序</div></div>`:`<div class="empty">這天還沒有行程。<br>打開「編輯」，可以一次放進好幾個景點當候選，再慢慢排時段。</div>`)}
     ${candHtml}
     <div class="add-row edit-block" style="margin-top:10px"><button class="btn sm solid" data-act="stop-bulk" data-i="${i}">${ic('plus')}一次加入多個景點</button> <button class="btn sm" data-act="stop-add" data-i="${i}">${ic('plus')}新增單一停留點</button></div>`;
   renderDayMap();
@@ -1859,7 +1886,7 @@ function editCity(c){const t=T(),isNew=!c;c=c||{id:uid('c'),name:'',local:''};
 const spotFields=()=>[{k:'name',label:'名稱',full:1},{k:'local',label:'當地名稱／地址',full:1},{k:'cat',label:'類別',type:'select',opts:T().categories.map(c=>({v:c.id,l:c.name}))},{k:'must',label:'必去',type:'check',text:'標記為「必去」'},{k:'note',label:'備註／推薦理由',type:'textarea'},{k:'url',label:'自訂連結（選填，例如 Google Maps 或 IG）',full:1,ph:'https://'},{k:'loc',label:'位置',type:'latlng'}];
 const stopFields=(dayI)=>{const t=T();return [
   {k:'day',label:'哪一天',type:'select',opts:t.days.map((d,i)=>({v:i,l:`DAY ${i+1} · ${md(dayDate(t,i))} ${d.title||''}`}))},
-  {k:'tmode',label:'什麼時候去',type:'select',opts:[{v:'none',l:'先放著（候選，不排時間）'},{v:'slot',l:'大概時段（上午／下午／晚上）'},{v:'exact',l:'精確時間'}]},
+  {k:'tmode',label:'什麼時候去',type:'select',opts:[{v:'none',l:'先放著（候選）'},{v:'order',l:'排進行程，先不填時間（之後拖曳排順序）'},{v:'slot',l:'大概時段（上午／下午／晚上）'},{v:'exact',l:'精確時間'}]},
   {k:'slot',label:'時段',type:'select',opts:SLOTS.map(s=>({v:s[0],l:s[1]})),when:{k:'tmode',eq:'slot'}},{k:'time',label:'時間',type:'time',when:{k:'tmode',eq:'exact'}},
   {k:'ref',label:'地點',type:'select',full:1,opts:[{v:'_custom',l:'✎ 自訂地點（不在口袋名單）'},...(t.hotels.length?[{group:'住宿',opts:t.hotels.map(h=>({v:'hotel:'+h.id,l:h.name}))}]:[]),...t.categories.map(c=>({group:c.name,opts:t.spots.filter(s=>s.cat===c.id).map(s=>({v:s.id,l:s.name}))})).filter(g=>g.opts.length)]},
   {k:'name',label:'自訂地點名稱',full:1,when:{k:'ref',eq:'_custom'}},{k:'loc',label:'自訂地點位置',type:'latlng',when:{k:'ref',eq:'_custom'}},
@@ -1867,11 +1894,15 @@ const stopFields=(dayI)=>{const t=T();return [
 const findStop=id=>{for(const[i,d]of T().days.entries()){const s=d.stops.find(x=>x.id===id);if(s)return{s,d,i}}return null};
 function editStop(st,dayI,forceNew){
   const t=T(),isNew=!st||!!forceNew;st=st||{id:uid('st'),time:'',ref:t.spots[0]?t.spots[0].id:'_custom'};
-  const data={...st,day:dayI,ref:st.ref||'_custom',tmode:st.time?'exact':slotOf(st.slot)?'slot':'none',slot:st.slot||'am'};
+  const data={...st,day:dayI,ref:st.ref||'_custom',tmode:st.time?'exact':slotOf(st.slot)?'slot':st.planned?'order':'none',slot:st.slot||'am'};
   openForm({title:forceNew?'排進行程':isNew?'新增停留點':'編輯停留點',fields:stopFields(dayI),data,
-    onSave:o=>{const n={id:st.id,note:o.note};if(o.tmode==='exact'&&o.time)n.time=o.time;else if(o.tmode==='slot')n.slot=o.slot;if(o.ref==='_custom'){if(!o.name){toast('請輸入地點名稱');return false}n.name=o.name;if(num(o.lat)&&num(o.lng)){n.lat=o.lat;n.lng=o.lng}}else n.ref=o.ref;
-      if(!isNew){const f=findStop(st.id);f&&f.d.stops.splice(f.d.stops.indexOf(f.s),1)}
-      t.days[+o.day].stops.push(n);S.ui.day=+o.day},
+    onSave:o=>{const n={id:st.id,note:o.note};if(o.tmode==='exact'&&o.time)n.time=o.time;else if(o.tmode==='slot')n.slot=o.slot;if(o.tmode!=='none')n.planned=true;if(o.ref==='_custom'){if(!o.name){toast('請輸入地點名稱');return false}n.name=o.name;if(num(o.lat)&&num(o.lng)){n.lat=o.lat;n.lng=o.lng}}else n.ref=o.ref;
+      const D=T().days[+o.day],f=isNew?null:findStop(st.id);
+      if(f&&f.d===D&&(!D.manual||(stopRank(f.s)===stopRank(n)))){D.stops[D.stops.indexOf(f.s)]=n}
+      else{if(f)f.d.stops.splice(f.d.stops.indexOf(f.s),1);
+        if(D.manual&&isPlanned(n)){const plan=plannedList(D),cand=D.stops.filter(s=>!isPlanned(s));let k=-1;if(hasWhen(n))k=plan.findIndex(s=>hasWhen(s)&&stopRank(s)>stopRank(n));k<0?plan.push(n):plan.splice(k,0,n);D.stops=[...plan,...cand]}
+        else D.stops.push(n)}
+      S.ui.day=+o.day},
     onDelete:isNew?null:()=>delStop(st.id)});
 }
 function delStop(id){const f=findStop(id);if(!f)return;const r=resolve(f.s);confirmBox(`從 DAY ${f.i+1} 移除「${esc(r.name)}」？<br><small>景點本身還會留在口袋名單。</small>`,()=>{const g=findStop(id);if(g){g.d.stops.splice(g.d.stops.indexOf(g.s),1);commit();toast('已移除停留點')}},'移除')}
@@ -2114,6 +2145,80 @@ document.addEventListener('focusin',e=>{if(e.target.matches('input,textarea,sele
 document.addEventListener('focusout',()=>setTimeout(()=>{const a=document.activeElement;if(!a||!a.matches('input,textarea,select'))document.body.classList.remove('typing')},120));
 (function(){const i=$('#gq');if(!i)return;i.addEventListener('input',()=>{S.ui.q=i.value;if(i.value&&layout()==='tabs'&&S.ui.view!=='spots')location.hash='#spots';else if(i.value&&layout()!=='tabs')document.getElementById('spots').scrollIntoView({behavior:'smooth'});renderSpots()});
   i.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();i.blur()}if(e.key==='Escape')A['search-clear']()})})();
+/* ================= 每日行程拖曳排序 =================
+   手機：長按卡片約 0.4 秒後拖曳；電腦：按住卡片直接拖。
+   拖到上方時間軸＝排進行程；拖到候選區＝改回候選（清掉時間）。 */
+let drag=null,dragEnded=0;
+const DRAG_BLOCK='a,button,input,select,textarea,.edbar';
+function dzOf(el){return el&&el.closest&&el.closest('[data-dz]')}
+function startDrag(card,x,y){
+  const r=card.getBoundingClientRect(),ghost=card.cloneNode(true);
+  ghost.classList.add('drag-ghost');Object.assign(ghost.style,{width:r.width+'px',left:r.left+'px',top:r.top+'px'});
+  document.body.appendChild(ghost);card.classList.add('dragging');document.body.classList.add('is-dragging');
+  const line=document.createElement('div');line.className='drop-line';
+  drag={card,ghost,line,sid:card.dataset.sid,dx:x-r.left,dy:y-r.top,x,y,zone:null,before:null,raf:0};
+  try{navigator.vibrate&&navigator.vibrate(12)}catch(e){}
+  moveDrag(x,y);autoScroll();
+}
+function moveDrag(x,y){
+  if(!drag)return;drag.x=x;drag.y=y;
+  drag.ghost.style.transform=`translate(${x-drag.dx-parseFloat(drag.ghost.style.left)}px,${y-drag.dy-parseFloat(drag.ghost.style.top)}px) rotate(1.5deg)`;
+  const el=document.elementFromPoint(x,y),zone=dzOf(el);
+  $$('[data-dz]').forEach(z=>z.classList.toggle('dz-on',z===zone));
+  if(!zone){drag.zone=null;drag.line.remove();return}
+  const items=$$('[data-sid]',zone).filter(e=>e!==drag.card&&e.parentElement.closest('[data-dz]')===zone);
+  let before=null;
+  for(const it of items){const b=it.getBoundingClientRect();
+    const grid=zone.dataset.dz==='cand';
+    if(grid?(y<b.top+b.height/2&&x<b.right)||(y<b.top):y<b.top+b.height/2){before=it;break}}
+  drag.zone=zone.dataset.dz;drag.before=before?before.dataset.sid:null;
+  const host=zone.querySelector('.dz-list')||zone;
+  if(before)before.parentElement.insertBefore(drag.line,before);else host.appendChild(drag.line);
+}
+function autoScroll(){if(!drag)return;const m=90,v=drag.y<m?-(m-drag.y)/5:drag.y>innerHeight-m-70?(drag.y-(innerHeight-m-70))/5:0;
+  if(v){window.scrollBy(0,v);moveDrag(drag.x,drag.y)}drag.raf=requestAnimationFrame(autoScroll)}
+function endDrag(cancel){
+  if(!drag)return;const d=drag;drag=null;cancelAnimationFrame(d.raf);
+  d.ghost.remove();d.line.remove();d.card.classList.remove('dragging');document.body.classList.remove('is-dragging');
+  $$('[data-dz]').forEach(z=>z.classList.remove('dz-on'));dragEnded=Date.now();
+  if(!cancel&&d.zone)applyDrop(d.sid,d.zone,d.before);
+}
+function applyDrop(sid,zone,beforeId){
+  const t=T(),di=S.ui.day||0,day=t.days[di];if(!day)return;
+  const st=day.stops.find(s=>s.id===sid);if(!st||sid===beforeId)return;
+  let plan=plannedList(day).filter(s=>s.id!==sid),cand=day.stops.filter(s=>!isPlanned(s)&&s.id!==sid);
+  const wasPlanned=isPlanned(st);
+  if(zone==='tl'){st.planned=true;const k=beforeId?plan.findIndex(s=>s.id===beforeId):-1;k<0?plan.push(st):plan.splice(k,0,st);
+    if(!wasPlanned)setTimeout(()=>toast('已排進行程，需要的話再點「編輯」補時段'),60)}
+  else{delete st.time;delete st.slot;st.planned=false;const k=beforeId?cand.findIndex(s=>s.id===beforeId):-1;k<0?cand.push(st):cand.splice(k,0,st);
+    if(wasPlanned)setTimeout(()=>toast('已移回候選'),60)}
+  day.stops=[...plan,...cand];day.manual=true;commit();
+}
+(function(){
+  let press=null;
+  const clear=()=>{if(press){clearTimeout(press.timer);press=null}};
+  document.addEventListener('pointerdown',e=>{
+    if(e.button!==0||drag)return;const card=e.target.closest('#dayLeft [data-sid]');if(!card||e.target.closest(DRAG_BLOCK))return;
+    if(!e.target.closest('.grip')&&!card.closest('[data-dz]'))return;
+    press={card,x:e.clientX,y:e.clientY,type:e.pointerType,started:false};
+    if(e.target.closest('.grip')){e.preventDefault();startDrag(card,e.clientX,e.clientY);press.started=true;return}
+    if(e.pointerType!=='mouse')press.timer=setTimeout(()=>{if(press){press.started=true;startDrag(card,press.x,press.y)}},380);
+  });
+  document.addEventListener('pointermove',e=>{
+    if(drag){moveDrag(e.clientX,e.clientY);return}
+    if(!press)return;const dist=Math.hypot(e.clientX-press.x,e.clientY-press.y);
+    if(press.type==='mouse'&&dist>6){press.started=true;startDrag(press.card,press.x,press.y);moveDrag(e.clientX,e.clientY)}
+    else if(press.type!=='mouse'&&dist>8)clear();
+  });
+  document.addEventListener('touchmove',e=>{if(drag){e.preventDefault();const t=e.touches[0];if(t)moveDrag(t.clientX,t.clientY)}},{passive:false});
+  document.addEventListener('pointerup',()=>{clear();if(drag)endDrag(false)});
+  document.addEventListener('touchend',()=>{clear();if(drag)endDrag(false)});
+  document.addEventListener('pointercancel',()=>{if(drag)return;clear()});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&drag)endDrag(true)});
+  document.addEventListener('click',e=>{if(Date.now()-dragEnded<350&&e.target.closest('#dayLeft')){e.stopPropagation();e.preventDefault()}},true);
+  document.addEventListener('contextmenu',e=>{if(e.target.closest('#dayLeft [data-sid]'))e.preventDefault()});
+})();
+
 /* boot */
 load();if(CFG&&qsTrip&&S.trips[qsTrip])S.activeId=qsTrip;applyMapState();renderAll();applyLayout();loadWeather();navSpy();cloudBoot();
 window.addEventListener('resize',()=>{heroMap&&heroMap.invalidateSize();dayMap&&dayMap.invalidateSize()});
