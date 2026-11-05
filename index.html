@@ -697,6 +697,29 @@ body.typing .tabbar{display:none}
 .ava.sm{width:24px;height:24px}
 .chip .ava.sm,.pick .ava.sm{margin:-3px 0}
 
+.dtab.add{border-style:dashed;justify-content:center;align-items:center;min-width:86px;color:var(--ink2);background:transparent}
+.dtab.add svg.i{width:18px;height:18px;color:var(--pop)}
+.dtab.add .t{font-size:12.5px}
+
+/* ---------- v8: multi-city / member delete ---------- */
+body.is-owner .non-owner{display:none!important}
+.mate{position:relative}
+.mate-x{position:absolute;top:-4px;right:-2px;width:20px;height:20px;border-radius:50%;background:#fff;border:1.3px solid #B3261E;color:#B3261E;place-items:center;z-index:2}
+body.editing .mate-x{display:grid!important}
+body:not(.is-owner) .mate-x{display:none!important}
+.mate-x svg.i{width:12px;height:12px;stroke-width:2.6}
+.route-cities{display:inline-flex;align-items:center;gap:6px}
+.city-jump{position:absolute;top:52px;left:12px;z-index:500;display:flex;gap:6px;flex-wrap:wrap}
+.city-jump:empty{display:none}
+.wx-seg{margin-right:4px}
+.city-bar{margin-bottom:8px}
+.city-bar .flabel{margin-right:2px}
+.day-area b{color:var(--ink)}
+.day-area{flex-wrap:wrap;gap:0 4px}
+.day-area b{white-space:nowrap}
+.city-jump{top:48px;left:58px}
+.spot-body .edbar .btn{padding:5px 9px}
+
 </style>
 </head>
 <body>
@@ -731,7 +754,7 @@ body.typing .tabbar{display:none}
           <button class="ibtn sm" data-act="map-center" title="回到市中心"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg></button>
           <button class="ibtn sm" data-act="map-all" title="顯示全部景點"><svg class="i" viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button>
         </div>
-        <div class="map-legend" id="heroLegend"></div>
+        <div class="city-jump" id="cityJump"></div><div class="map-legend" id="heroLegend"></div>
       </div></div>
     </div>
   </section>
@@ -747,7 +770,7 @@ body.typing .tabbar{display:none}
   <section class="sec" id="weather" data-view="overview">
     <div class="sec-head">
       <div><span class="eyebrow">02 · Weather</span><h2>天氣預報</h2><p id="weatherSub">即時資料來自 Open-Meteo，免金鑰、每 30 分鐘更新</p></div>
-      <div class="sec-tools"><button class="btn sm" data-act="wx-refresh"><svg class="i" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg>重新整理</button></div>
+      <div class="sec-tools"><span id="wxTabs"></span><button class="btn sm edit-only owner-only" data-act="city-add">＋ 城市</button><button class="btn sm" data-act="wx-refresh"><svg class="i" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg>重新整理</button></div>
     </div>
     <div class="weather" id="weatherBody"></div>
   </section>
@@ -769,7 +792,7 @@ body.typing .tabbar{display:none}
   <section class="sec" id="spots" data-view="spots">
     <div class="sec-head">
       <div><span class="eyebrow">04 · Pocket List</span><h2>景點口袋名單</h2></div>
-      <div class="sec-tools"><button class="btn sm edit-only" data-act="cat-manage">管理類別</button><button class="btn sm solid edit-only" data-act="spot-add">＋ 新增景點</button></div>
+      <div class="sec-tools"><button class="btn sm edit-only owner-only" data-act="cat-manage">管理類別</button><button class="btn sm solid edit-only" data-act="spot-add">＋ 新增景點</button></div>
     </div>
     <div id="spotsBody"></div>
   </section>
@@ -833,7 +856,7 @@ window.FIREBASE_CONFIG = {
 <script>
 /*TRIPDATA_START*/
 window.TRIP_SEED = {
-  "rev": 3,
+  "rev": 4,
   "trips": [{
     "id": "hanoi-2026",
     "isSample": true,
@@ -848,6 +871,10 @@ window.TRIP_SEED = {
     "start": "2026-12-10",
     "end": "2026-12-14",
     "center": [21.0315, 105.8500],
+    "cities": [
+      { "id": "c1", "name": "河內", "local": "Hà Nội", "lat": 21.0315, "lng": 105.85 },
+      { "id": "c2", "name": "寧平", "local": "Ninh Bình", "lat": 20.2506, "lng": 105.9745 }
+    ],
     "zoom": 14,
     "currency": { "local": "VND", "localSymbol": "₫", "home": "TWD", "homeSymbol": "NT$", "rate": 830 },
     "climateNote": "12 月的河內偏乾冷，白天約 18–21°C、早晚 13–15°C，常有薄霧與霧霾；帶件薄外套和口罩。",
@@ -944,7 +971,7 @@ window.TRIP_SEED = {
         { "id": "b11", "ref": "s-chancong" },
         { "id": "b12", "ref": "s-tahien" }
       ]},
-      { "id": "d3", "title": "寧平一日遊", "tag": "包車", "stops": [
+      { "id": "d3", "title": "寧平一日遊", "tag": "包車", "city": "c2", "stops": [
         { "id": "c1", "time": "07:30", "ref": "hotel:h1", "note": "包車出發，車程約 2 小時" },
         { "id": "c2", "time": "10:00", "ref": "s-trangan" },
         { "id": "c3", "time": "13:00", "name": "寧平山羊肉午餐", "lat": 20.2512, "lng": 105.9105, "note": "Dê núi 山羊肉＋鍋巴，司機通常會推薦店家" },
@@ -1149,6 +1176,7 @@ function normalize(t){
   t.currency=Object.assign({local:'VND',localSymbol:'₫',home:'TWD',homeSymbol:'NT$',rate:1},t.currency||{});
   if(!Array.isArray(t.center))t.center=[21.03,105.85];
   t.zoom=t.zoom||13; t.theme=t.theme||'mango';
+  if(!Array.isArray(t.cities)||!t.cities.length)t.cities=[{id:'c1',name:t.city||'',local:t.cityLocal||'',lat:+t.center[0],lng:+t.center[1]}];
   const SM={coffee:'pop',mango:'pop',green:'sky',ice:'sky',oat:'paper'};
   t.flights.forEach(f=>{if(f.terminal&&f.fromT==null){const p=String(f.terminal).split(/→|->|>/).map(s=>s.trim());f.fromT=p[0]||'';f.toT=p[1]||''}delete f.terminal;if(SM[f.style])f.style=SM[f.style]});
   t.members.forEach((m,i)=>{if(!m.animal)m.animal=ANIMAL_KEYS[i%ANIMAL_KEYS.length]});
@@ -1175,6 +1203,11 @@ const SLOTS=[['morning','早上',420],['am','上午',570],['noon','中午',720],
 const slotOf=k=>SLOTS.find(s=>s[0]===k);
 const hasWhen=st=>!!(st.time||slotOf(st.slot));
 const stopRank=st=>{if(st.time){const[h,m]=st.time.split(':').map(Number);return h*60+(m||0)}const s=slotOf(st.slot);return s?s[2]:99999};
+const cityOf=id=>{const t=T();return t.cities.find(c=>c.id===id)||t.cities[0]};
+const multiCity=()=>T().cities.length>1;
+const dayCity=i=>{const d=T().days[i];return cityOf(d&&d.city)};
+const spotCity=s=>{if(!hasLL(s))return null;let best=null,bd=1e9;T().cities.forEach(c=>{if(!hasLL(c))return;const k=km(c,s);if(k<bd){bd=k;best=c}});return bd<=80?best:null};
+const cityRoute=()=>{const t=T(),seq=[];t.days.forEach((d,i)=>{const c=cityOf(d.city);if(!seq.length||seq[seq.length-1].id!==c.id)seq.push(c)});return seq};
 const sortStops=a=>a.map((s,i)=>[s,i]).sort((x,y)=>stopRank(x[0])-stopRank(y[0])||x[1]-y[1]).map(x=>x[0]);
 const whenLabel=st=>st.time||(slotOf(st.slot)||[])[1]||'';
 function money(v,code){const t=T();const zero=['VND','JPY','KRW','IDR','TWD','HUF','CLP','ISK'].includes(code);const sym=code===t.currency.local?t.currency.localSymbol:code===t.currency.home?t.currency.homeSymbol:code+' ';const s=Math.abs(v).toLocaleString('en-US',{maximumFractionDigits:zero?0:2,minimumFractionDigits:0});return (v<0?'−':'')+sym+s}
@@ -1188,7 +1221,7 @@ const FB_SDK='https://www.gstatic.com/firebasejs/10.12.2/';
 const qsTrip=new URLSearchParams(location.search).get('t');
 const CLOUD={on:!!CFG,ready:false,user:null,tripId:null,ownerUid:null,owner:true,db:null,known:{},knownMeta:null,cache:{},loaded:new Set(),metaLoaded:false,status:CFG?'connecting':'local',myTrips:null,missing:false};
 const COLS=['spots','stops','days','flights','transfers','hotels','todoGroups','todos','expenses','members'];
-const META_KEYS=['name','city','cityLocal','country','eyebrow','greeting','start','end','center','zoom','currency','climateNote','theme','avaStyle','categories','isSample'];
+const META_KEYS=['name','city','cityLocal','country','eyebrow','greeting','start','end','center','zoom','currency','climateNote','theme','avaStyle','categories','isSample','cities'];
 const stable=v=>{if(Array.isArray(v))return '['+v.map(stable).join(',')+']';if(v&&typeof v==='object')return '{'+Object.keys(v).filter(k=>v[k]!==undefined).sort().map(k=>JSON.stringify(k)+':'+stable(v[k])).join(',')+'}';return JSON.stringify(v===undefined?null:v)};
 const cleanObj=o=>JSON.parse(JSON.stringify(o));
 const isOwnerUser=()=>!!(CLOUD.user&&!CLOUD.user.isAnonymous);
@@ -1197,7 +1230,7 @@ const inCloudTrip=()=>CLOUD.on&&!!CLOUD.tripId;
 function toDocs(t){
   const o={spots:[],stops:[],days:[],flights:[],transfers:[],hotels:[],todoGroups:[],todos:[],expenses:[],members:[]};
   ['spots','flights','transfers','hotels','expenses','members'].forEach(k=>t[k].forEach((x,i)=>o[k].push({...x,o:i})));
-  t.days.forEach((d,di)=>{o.days.push({id:'d'+di,title:d.title||'',tag:d.tag||'',area:d.area||'',o:di});d.stops.forEach((s,i)=>o.stops.push({...s,day:di,o:i}))});
+  t.days.forEach((d,di)=>{o.days.push({id:'d'+di,title:d.title||'',tag:d.tag||'',area:d.area||'',city:d.city||'',o:di});d.stops.forEach((s,i)=>o.stops.push({...s,day:di,o:i}))});
   (t._orphans||[]).forEach(s=>o.stops.push(s));
   t.todos.forEach((g,gi)=>{o.todoGroups.push({id:g.id,title:g.title||'',o:gi});g.items.forEach((it,i)=>o.todos.push({...it,g:g.id,o:i}))});
   const map={};for(const c in o){map[c]={};o[c].forEach(d=>{map[c][d.id]=cleanObj(d)})}
@@ -1209,7 +1242,7 @@ function fromCloud(t){
   ['spots','flights','transfers','hotels','expenses'].forEach(k=>{if(c[k])t[k]=srt(k).map(strip)});
   if(c.members&&Object.keys(c.members).length)t.members=srt('members').map(strip);
   syncDays(t);
-  if(c.days)t.days.forEach((d,i)=>{const x=c.days['d'+i]||{};d.title=x.title||'';d.tag=x.tag||'';d.area=x.area||''});
+  if(c.days)t.days.forEach((d,i)=>{const x=c.days['d'+i]||{};d.title=x.title||'';d.tag=x.tag||'';d.area=x.area||'';d.city=x.city||''});
   if(c.stops){t.days.forEach(d=>d.stops=[]);t._orphans=[];srt('stops').forEach(s=>{const di=s.day;if(t.days[di]){const x=strip(s);delete x.day;t.days[di].stops.push(x)}else t._orphans.push(s)})}
   if(c.todoGroups&&c.todos){const items=srt('todos');t.todos=srt('todoGroups').map(g=>({id:g.id,title:g.title,items:items.filter(i=>i.g===g.id).map(i=>{const x=strip(i);delete x.g;return x})}))}
 }
@@ -1337,6 +1370,7 @@ function renderHeroMap(){
     L.marker([s.lat,s.lng],{icon:mkIcon(c.color,ic(c.icon),'',Math.random()*350|0),title:s.name}).bindPopup(popHtml({...s,cat:c.name})).addTo(heroLayer)});
   t.hotels.forEach(h=>{if(!hasLL(h))return;L.marker([h.lat,h.lng],{icon:mkIcon('#FFD866',ic('bed'),'home big'),zIndexOffset:500}).bindPopup(popHtml({name:h.name,local:h.address,lat:h.lat,lng:h.lng,cat:'住宿'})).addTo(heroLayer)});
   $('#heroMapLabel').textContent=(t.cityLocal||t.city||'CITY').toUpperCase()+' · MAP';
+  const cj=$('#cityJump');if(cj)cj.innerHTML=multiCity()?t.cities.map(c=>`<button class="chip" data-act="city-jump" data-id="${c.id}">${ic('pin')}${esc(c.name)}</button>`).join(''):'';
   $('#heroLegend').innerHTML=t.categories.map(c=>`<button class="chip ${hidden.has(c.id)?'off':''}" style="--c:${c.color}" data-act="legend" data-id="${c.id}"><span class="dot"></span>${esc(c.name)}</button>`).join('');
 }
 function focusHero(lat,lng){if(!heroMap)return;if(!mapOpen('hero'))setMap('hero',true);if(layout()==='tabs'){if(S.ui.view!=='overview')location.hash='#overview';else window.scrollTo({top:0,behavior:'smooth'})}else document.getElementById('overview').scrollIntoView({behavior:'smooth'});setTimeout(()=>{heroMap.flyTo([lat,lng],16,{duration:.8});heroLayer.eachLayer(l=>{const p=l.getLatLng();if(Math.abs(p.lat-lat)<1e-6&&Math.abs(p.lng-lng)<1e-6)setTimeout(()=>l.openPopup(),850)})},350)}
@@ -1367,7 +1401,7 @@ function renderDayMap(){
   dayFitState={all:allp.map(p=>[p.lat,p.lng]),core:core.map(p=>[p.lat,p.lng]),showingAll:false};
   const fb=$('#dayFit');fb.hidden=core.length===allp.length;fb.innerHTML=`${ic('globe')}顯示全部 ${allp.length} 個點`;
   const keep=typeof inbound!=='undefined'&&inbound&&lastFitDay===i;lastFitDay=i;
-  if(!keep)setTimeout(()=>{dayMap.invalidateSize();if(core.length>1)dayMap.fitBounds(dayFitState.core,{padding:[46,46],maxZoom:16});else if(allp.length)dayMap.setView([allp[0].lat,allp[0].lng],15);else dayMap.setView(t.center,t.zoom)},60);
+  if(!keep)setTimeout(()=>{dayMap.invalidateSize();if(core.length>1)dayMap.fitBounds(dayFitState.core,{padding:[46,46],maxZoom:16});else if(allp.length)dayMap.setView([allp[0].lat,allp[0].lng],15);else{const c=dayCity(i);dayMap.setView(hasLL(c)?[c.lat,c.lng]:t.center,t.zoom)}},60);
 }
 function hlStop(id,fly){
   $$('.stop').forEach(e=>e.classList.toggle('hl',e.dataset.sid===id));
@@ -1412,15 +1446,15 @@ function renderHero(){
   <div class="hero-title">
     <span class="eyebrow">${esc(t.eyebrow||'')}</span>
     <h1>${esc(t.cityLocal||t.city)}<small>${esc(t.name)}</small></h1>
-    <div class="hero-meta"><span>${ic('calendar')}${t.start.replace(/-/g,'.')} — ${md(t.end)}（${nights+1} 天 ${nights} 夜）</span><span>${ic('users')}${t.members.length} 人</span></div>
+    <div class="hero-meta"><span>${ic('calendar')}${t.start.replace(/-/g,'.')} — ${md(t.end)}（${nights+1} 天 ${nights} 夜）</span><span>${ic('users')}${t.members.length} 人</span>${multiCity()?`<span class="route-cities">${ic('route')}${cityRoute().map(c=>esc(c.name)).join(' → ')}</span>`:''}</div>
     <button class="ibtn sm edit-only owner-only" style="position:absolute;right:18px;top:18px;z-index:2;color:var(--ink)" data-act="trip-edit">${ic('pencil')}</button>
   </div>
   <div class="hero-row">
     <div class="count" data-act="reflip" title="點一下再翻一次"><span class="tag tag-sm">${c.tag}</span>${typeof c.big==="number"?`<div class="flipnum" data-v="${c.big}">${String(c.big).padStart(2,"0").split("").map(()=>`<span class="fd"><span class="h t"><i>0</i></span><span class="h b"><i>0</i></span><span class="h ft"><i>0</i></span><span class="h fb"><i>0</i></span></span>`).join("")}</div>`:`<b>${c.big}</b>`}<span>${c.txt}</span></div>
     <div class="now-w" id="nowW"><small>${esc(t.city)}現在</small><div class="t">${ic('cloud')}<span>--°</span></div><small>載入天氣中…</small></div>
   </div>
-  <div class="crew"><div class="crew-top"><span class="eyebrow">Travel Crew · ${t.members.length}</span><span class="hint edit-only owner-only" style="margin-left:auto">點頭像可改名、換動物</span></div>
-    <div class="crew-list">${t.members.map((m,i)=>`<button class="mate ${myId()===m.id?'me':''}" style="--i:${i}" data-act="mate" data-id="${m.id}" title="${esc(m.name)}">${avaHtml(m.animal)}<span class="nm">${esc(m.name)}</span></button>`).join('')}
+  <div class="crew"><div class="crew-top"><span class="eyebrow">Travel Crew · ${t.members.length}</span><span class="hint edit-only owner-only" style="margin-left:auto">點頭像改名／換動物，右上 × 刪除</span><span class="hint edit-only non-owner" style="margin-left:auto">新增／刪除旅伴需主辦人登入</span></div>
+    <div class="crew-list">${t.members.map((m,i)=>`<button class="mate ${myId()===m.id?'me':''}" style="--i:${i}" data-act="mate" data-id="${m.id}" title="${esc(m.name)}">${avaHtml(m.animal)}<span class="nm">${esc(m.name)}</span><span class="mate-x edit-only owner-only" data-act="mem-del" data-id="${m.id}" title="刪除旅伴">${ic('x')}</span></button>`).join('')}
     <button class="mate add edit-only owner-only" data-act="mem-add"><span class="ava">${ic('plus')}</span><span class="nm">新增</span></button></div></div>
   <div class="greet">${esc(t.greeting||'')}</div>`;
   const fv=String(c.big);if(fv!==lastFlip){lastFlip=fv;runFlip(false)}else runFlip(true);
@@ -1470,30 +1504,33 @@ function renderFlights(){
 /* ================= weather ================= */
 const WMO=c=>c===0?['sun','晴朗']:c<=2?['partly','晴時多雲']:c===3?['cloud','陰天']:c<=48?['fog','有霧']:c<=57?['rain','毛毛雨']:c<=67?['rain','下雨']:c<=77?['snow','下雪']:c<=82?['rain','陣雨']:c<=86?['snow','陣雪']:['storm','雷雨'];
 let wx=null;
+const wxCity=()=>{const t=T();return t.cities.find(c=>c.id===S.ui.wxCity)||t.cities[0]};
 async function loadWeather(force){
-  const t=T();const k='tripdesk.wx.'+t.center.map(v=>(+v).toFixed(2)).join(',');
+  const t=T(),wc=wxCity(),cen=hasLL(wc)?[wc.lat,wc.lng]:t.center;const k='tripdesk.wx.'+cen.map(v=>(+v).toFixed(2)).join(',');
   if(!force){try{const c=JSON.parse(localStorage.getItem(k));if(c&&Date.now()-c.ts<30*60e3){wx=c;renderWeather();return}}catch(e){}}
   $('#weatherBody').innerHTML='<div class="card skeleton" style="grid-column:1/-1">天氣載入中…</div>';
   try{
-    const u=`https://api.open-meteo.com/v1/forecast?latitude=${t.center[0]}&longitude=${t.center[1]}&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=16`;
+    const u=`https://api.open-meteo.com/v1/forecast?latitude=${cen[0]}&longitude=${cen[1]}&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=16`;
     const r=await fetch(u);if(!r.ok)throw 0;const data=await r.json();
     wx={ts:Date.now(),data};try{localStorage.setItem(k,JSON.stringify(wx))}catch(e){}
   }catch(e){wx={err:true}}
   renderWeather();
 }
 function renderWeather(){
-  const t=T(),box=$('#weatherBody');
+  const t=T(),box=$('#weatherBody'),tabs=$('#wxTabs');
+  if(tabs)tabs.innerHTML=multiCity()?`<div class="seg wx-seg">${t.cities.map(c=>`<button class="${wxCity().id===c.id?'on':''}" data-act="wx-city" data-id="${c.id}">${esc(c.name)}</button>`).join('')}</div>`:'';
   if(!wx){box.innerHTML='<div class="card skeleton" style="grid-column:1/-1">天氣載入中…</div>';return}
   if(wx.err||!wx.data){box.innerHTML=`<div class="card w-now"><b>暫時抓不到天氣</b><div class="w-tip">${esc(t.climateNote||'請稍後再試')}</div></div><div class="card w-days skeleton">需要網路連線；部署到 Netlify 後即可正常顯示。</div>`;
     const nw=$('#nowW');if(nw)nw.innerHTML=`<small>${esc(t.city)}天氣</small><div class="t">${ic('cloud')}<span>--°</span></div><small>離線中</small>`;return}
   const d=wx.data,cur=d.current,[ci,cd]=WMO(cur.weather_code),dd=d.daily;
   const days=dd.time.map((s,i)=>({s,code:dd.weather_code[i],hi:dd.temperature_2m_max[i],lo:dd.temperature_2m_min[i],rain:dd.precipitation_probability_max[i]}));
-  const inTrip=days.filter(x=>x.s>=t.start&&x.s<=t.end);
+  const wc=wxCity(),cityDates=new Set(t.days.map((dd2,i)=>cityOf(dd2.city).id===wc.id?dayDate(t,i):null).filter(Boolean));
+  const inTrip=days.filter(x=>cityDates.has(x.s));
   let tips=[];const pool=inTrip.length?inTrip:days.slice(0,5);
   const lo=Math.min(...pool.map(x=>x.lo)),hi=Math.max(...pool.map(x=>x.hi)),rn=Math.max(...pool.map(x=>x.rain||0));
   if(lo<16)tips.push('早晚偏涼，帶件外套');if(hi>=30)tips.push('白天很熱，注意防曬補水');if(rn>=50)tips.push('有明顯降雨機率，帶把傘');if(!tips.length)tips.push('天氣舒適，適合整天散步');
   box.innerHTML=`<div class="card w-now">
-      <span class="eyebrow" style="margin:0">${esc(t.cityLocal||t.city)} · NOW</span>
+      <span class="eyebrow" style="margin:0">${esc(wc.local||wc.name)} · NOW</span>
       <div class="temp">${ic(ci,"wx wx-"+ci)}${Math.round(cur.temperature_2m)}°</div>
       <b style="font-size:15px">${cd}</b>
       <dl><dt>FEELS</dt><dd>${Math.round(cur.apparent_temperature)}°C</dd><dt>HUMID</dt><dd>${cur.relative_humidity_2m}%</dd><dt>WIND</dt><dd>${Math.round(cur.wind_speed_10m)} km/h</dd></dl>
@@ -1501,18 +1538,18 @@ function renderWeather(){
     </div>
     <div class="card w-days">
       <div class="w-foot" style="color:var(--ink)"><b>16 天預報</b><span>${inTrip.length?`<span class="tag">旅程期間 ${inTrip.length} 天已在預報內</span>`:`<span class="tag dash">出發前 16 天內會自動標出旅程日</span>`}</span></div>
-      <div class="w-strip">${days.map(x=>{const[i]=WMO(x.code);const trip=x.s>=t.start&&x.s<=t.end;return `<div class="w-day ${trip?'trip':''}"><div class="d">${md(x.s)}</div><div class="wd">週${wk(x.s)}${trip?' · 旅程':''}</div>${ic(i,'wx wx-'+i)}<div class="hl">${Math.round(x.hi)}° <span>/ ${Math.round(x.lo)}°</span></div><div class="rain">${ic('drop','').replace('class="i "','class="i" style="width:11px;height:11px;vertical-align:-1px"')} ${x.rain??0}%</div></div>`}).join('')}</div>
+      <div class="w-strip">${days.map(x=>{const[i]=WMO(x.code);const trip=cityDates.has(x.s);return `<div class="w-day ${trip?'trip':''}"><div class="d">${md(x.s)}</div><div class="wd">週${wk(x.s)}${trip?' · 旅程':''}</div>${ic(i,'wx wx-'+i)}<div class="hl">${Math.round(x.hi)}° <span>/ ${Math.round(x.lo)}°</span></div><div class="rain">${ic('drop','').replace('class="i "','class="i" style="width:11px;height:11px;vertical-align:-1px"')} ${x.rain??0}%</div></div>`}).join('')}</div>
       <div class="w-tip" style="border-style:solid;border-color:var(--hair);color:var(--ink)"><b>季節參考：</b>${esc(t.climateNote||'—')}</div>
       <div class="w-foot"><span>資料：Open-Meteo（免金鑰、免費）</span><span>更新於 ${new Date(wx.ts).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'})}</span></div>
     </div>`;
-  const nw=$('#nowW');if(nw)nw.innerHTML=`<small>${esc(t.city)}現在 · ${cd}</small><div class="t">${ic(ci,'wx wx-'+ci)}<span>${Math.round(cur.temperature_2m)}°</span></div><small>體感 ${Math.round(cur.apparent_temperature)}° · 濕度 ${cur.relative_humidity_2m}%</small>`;
+  const nw=$('#nowW');if(nw)nw.innerHTML=`<small>${esc(wc.name)}現在 · ${cd}</small><div class="t">${ic(ci,'wx wx-'+ci)}<span>${Math.round(cur.temperature_2m)}°</span></div><small>體感 ${Math.round(cur.apparent_temperature)}° · 濕度 ${cur.relative_humidity_2m}%</small>`;
 }
 
 /* ================= days ================= */
 function renderDays(){
   const t=T();if(S.ui.day==null||S.ui.day>=t.days.length){const ti=diffDays(t.start,todayIso());S.ui.day=ti>=0&&ti<t.days.length?ti:0}
   const i=S.ui.day,today=todayIso();
-  $('#dayTabs').innerHTML=t.days.map((d,k)=>{const ds=dayDate(t,k);return `<button class="dtab ${k===i?'on':''} ${ds===today?'today':''}" data-act="day" data-i="${k}"><span class="n">DAY ${k+1}</span><span class="t">${esc(d.title||'未命名')}</span><span class="d">${md(ds)}（${wk(ds)}）</span></button>`}).join('');
+  $('#dayTabs').innerHTML=`<button class="dtab add edit-only owner-only" data-act="day-add" data-pos="front">${ic('plus')}<span class="t">加在前面</span></button>`+t.days.map((d,k)=>{const ds=dayDate(t,k);return `<button class="dtab ${k===i?'on':''} ${ds===today?'today':''}" data-act="day" data-i="${k}"><span class="n">DAY ${k+1}</span><span class="t">${esc(d.title||'未命名')}</span><span class="d">${md(ds)}（${wk(ds)}）${multiCity()?` · ${esc(cityOf(d.city).name)}`:''}</span></button>`}).join('')+`<button class="dtab add edit-only owner-only" data-act="day-add" data-pos="end">${ic('plus')}<span class="t">加一天</span></button>`;
   const day=t.days[i],ds=dayDate(t,i),all=sortStops(day.stops),stops=all.filter(hasWhen),cands=all.filter(st=>!hasWhen(st));
   const pts=[];let n=0,dist=0;
   const card=(st,r,cand)=>{const note=st.note||r.note||'';return `<div class="scard ${cand?'cand':''}" data-act="stop-focus" data-id="${st.id}">
@@ -1538,7 +1575,7 @@ function renderDays(){
       <div class="day-num">${pad(i+1)}<small>${md(ds)} · 週${wk(ds)}</small></div>
       <div style="min-width:0;flex:1">
         <h3>${esc(day.title||'還沒取名的一天')} ${day.tag?`<span class="tag dash" style="vertical-align:3px">${esc(day.tag)}</span>`:''}</h3>
-        ${day.area?`<div class="day-area">${ic('pin')}${esc(day.area)}</div>`:''}
+        ${multiCity()||day.area?`<div class="day-area">${ic('pin')}${multiCity()?`<b>${esc(cityOf(day.city).name)}</b>${day.area?'・':''}`:''}${esc(day.area||'')}</div>`:''}
         <div class="day-stats"><span>已排 ${stops.length}</span><span>·</span><span>候選 ${cands.length}</span>${pts.length>1?`<span>·</span><span>路線約 ${dist.toFixed(1)} km</span>`:''}</div>
       </div>
       <div class="day-actions">
@@ -1556,7 +1593,8 @@ function renderDays(){
 function renderSpots(){
   const t=T(),f=S.ui.spotCat||'all',q=(S.ui.q||'').trim().toLowerCase(),must=!!S.ui.must;
   const sched={};t.days.forEach((d,i)=>d.stops.forEach(s=>{if(s.ref){(sched[s.ref]=sched[s.ref]||new Set()).add(i+1)}}));
-  const list=t.spots.filter(s=>(f==='all'||s.cat===f)&&(!must||s.must)&&(!q||(s.name+' '+(s.local||'')+' '+(s.note||'')).toLowerCase().includes(q)));
+  const sc=multiCity()?(S.ui.spotCity||'all'):'all';
+  const list=t.spots.filter(s=>(sc==='all'||((spotCity(s)||{}).id===sc))&&(f==='all'||s.cat===f)&&(!must||s.must)&&(!q||(s.name+' '+(s.local||'')+' '+(s.note||'')).toLowerCase().includes(q)));
   const chips=`<button class="chip ${f==='all'?'on':''}" data-act="cat-filter" data-id="all">全部 <small>${t.spots.length}</small></button>`+
     t.categories.map(c=>`<button class="chip ${f===c.id?'on':''}" style="--c:${c.color}" data-act="cat-filter" data-id="${c.id}"><span class="dot"></span>${esc(c.name)} <small>${t.spots.filter(s=>s.cat===c.id).length}</small></button>`).join('');
   const cards=list.map(s=>{const c=cat(s.cat),dz=sched[s.id]?[...sched[s.id]].sort():[];return `<article class="spot" style="--c:${c.color}">
@@ -1569,7 +1607,8 @@ function renderSpots(){
       </div>
       ${edbar('spot-edit','spot-del',s.id,`<button class="btn sm sun" data-act="spot-sched" data-id="${s.id}">${ic('plus')}排進行程</button>`)}
     </div></article>`}).join('');
-  $('#spotsBody').innerHTML=`<div class="spot-bar">${chips}<button class="chip ${must?'on':''}" data-act="must-toggle">${ic('star')}只看必去</button></div>
+  const cityBar=multiCity()?`<div class="spot-bar city-bar"><span class="flabel">城市</span><button class="chip ${sc==='all'?'on':''}" data-act="spot-city" data-id="all">全部</button>${t.cities.map(c=>`<button class="chip ${sc===c.id?'on':''}" data-act="spot-city" data-id="${c.id}">${ic('pin')}${esc(c.name)} <small>${t.spots.filter(s=>(spotCity(s)||{}).id===c.id).length}</small></button>`).join('')}</div>`:'';
+  $('#spotsBody').innerHTML=cityBar+`<div class="spot-bar">${chips}<button class="chip ${must?'on':''}" data-act="must-toggle">${ic('star')}只看必去</button></div>
     ${q?`<div class="q-note">${ic('search')}搜尋「${esc(S.ui.q)}」：${list.length} 個景點 <button class="btn sm" data-act="search-clear">清除</button></div>`:''}
     ${cards?`<div class="spots">${cards}</div>`:`<div class="empty">沒有符合的景點${t.spots.length?'，換個篩選看看':'。打開編輯模式新增第一個吧'}。</div>`}`;
 }
@@ -1679,6 +1718,15 @@ function renderSplit(){
 const myId=()=>{const v=(S.ui.me||{})[T().id];return T().members.some(m=>m.id===v)?v:null};
 function setMe(id){S.ui.me=S.ui.me||{};S.ui.me[T().id]=id;if(S.ui.exp)S.ui.exp.payer=id;save();renderNotice();renderHero();renderSplit();const m=T().members.find(x=>x.id===id);toast(`嗨，${m?m.name:''}！`)}
 
+/* 航班日期 → 旅程日期 */
+function syncTripFromFlight(f){
+  const t=T();if(!f.date||!CLOUD.owner)return;
+  if(f.dir==='去程'&&f.date!==t.start){const len=diffDays(t.start,t.end);
+    confirmBox(`去程航班是 ${md(f.date)}，但旅程出發日是 ${md(t.start)}。<br>要把旅程改成 ${md(f.date)} 出發嗎？倒數天數和每日分頁會一起更新（共 ${len+1} 天不變）。`,()=>{const T1=T();T1.start=f.date;T1.end=addDays(f.date,len);syncDays(T1);commit();toast('旅程日期已更新')},'一起更新',false)}
+  else if(f.dir==='回程'&&f.date!==t.end&&f.date>=t.start){
+    confirmBox(`回程航班是 ${md(f.date)}，但旅程最後一天是 ${md(t.end)}。<br>要把旅程改成 ${md(f.date)} 回程嗎？${f.date<t.end?'<small>（最後幾天的行程會被移除）</small>':''}`,()=>{const T1=T();T1.end=f.date;syncDays(T1);commit();toast('旅程日期已更新')},'一起更新',false)}
+}
+
 /* ================= theme & layout ================= */
 function applyTheme(){AVA_STYLE=T().avaStyle||'outline';const th=T().theme||'mango';document.documentElement.dataset.theme=th;
   setTimeout(()=>{const m=document.querySelector('meta[name=theme-color]');if(m)m.content=getComputedStyle(document.documentElement).getPropertyValue('--bg').trim()},0)}
@@ -1702,6 +1750,17 @@ function renderAll(){applyTheme();renderNotice();renderHero();renderFlights();re
   [['spotsBody',renderSpots],['todoBody',renderTodo],['splitBody',renderSplit]].forEach(([id,fn])=>{if(typeof busySection==='function'&&busySection(id))pendingSec.add(id);else fn()});
   renderStay();renderHeroMap();if($('#drawer').classList.contains('show'))renderDrawer()}
 
+/* ================= 地名 → 座標 ================= */
+async function geocode(q){
+  q=String(q||'').trim();if(!q)return null;
+  try{const r=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=1&language=zh&format=json`);const j=await r.json();
+    if(j.results&&j.results.length){const x=j.results[0];return{lat:x.latitude,lng:x.longitude,label:[x.name,x.admin1,x.country].filter(Boolean).join(', ')}}}catch(e){}
+  try{const r=await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&accept-language=zh-TW,en&q=${encodeURIComponent(q)}`);const j=await r.json();
+    if(j.length)return{lat:+j[0].lat,lng:+j[0].lon,label:j[0].display_name}}catch(e){}
+  return null;
+}
+let pickerSet=null;
+
 /* ================= modal / form engine ================= */
 function openModal(html){$('#modal').innerHTML=html;$('#ovl').classList.add('show');document.body.style.overflow='hidden'}
 function closeModal(){$('#ovl').classList.remove('show');document.body.style.overflow='';if(pickMap){pickMap.remove();pickMap=null}}
@@ -1724,7 +1783,7 @@ function fieldHtml(f,d){
       <div class="row-inline"><input class="inp mono" data-k="lat" type="number" step="any" placeholder="緯度 lat" value="${num(d.lat)?d.lat:''}"><input class="inp mono" data-k="lng" type="number" step="any" placeholder="經度 lng" value="${num(d.lng)?d.lng:''}"></div>
       <input class="inp" id="gUrl" placeholder="或貼上 Google Maps 網址／「緯度, 經度」自動帶入">
       <div class="hint">點一下地圖即可放置座標，標記也可以拖曳。Google 短網址（maps.app.goo.gl）無法解析，請先在瀏覽器打開後複製完整網址。</div></div>`;
-    default:return `<div class="${cls}"${when}>${lab}<input class="inp ${f.mono?'mono':''}" type="${f.type||'text'}" ${f.type==='number'?'step="any"':''} data-k="${f.k}" value="${esc(v)}" placeholder="${esc(f.ph||'')}">${hint}</div>`;
+    default:return `<div class="${cls}"${when}>${lab}<input ${f.geo?'data-geo="1"':''} class="inp ${f.mono?'mono':''}" type="${f.type||'text'}" ${f.type==='number'?'step="any"':''} data-k="${f.k}" value="${esc(v)}" placeholder="${esc(f.ph||'')}">${hint}</div>`;
   }
 }
 function openForm({title,fields,data={},onSave,onDelete,saveLabel='儲存',note}){
@@ -1749,12 +1808,16 @@ function openForm({title,fields,data={},onSave,onDelete,saveLabel='儲存',note}
   $('#mSave').onclick=doSave;form.onsubmit=e=>{e.preventDefault();doSave()};
   if(onDelete)$('#mDel').onclick=()=>{closeModal();onDelete()};
   if($('#pickMap'))setupPicker(data);
+  $$('[data-geo]',form).forEach(inp=>{let last=inp.value;inp.addEventListener('change',async()=>{const v=inp.value.trim();if(!v||v===last)return;last=v;
+    const hint=inp.parentElement.querySelector('.geo-hint')||inp.insertAdjacentElement('afterend',Object.assign(document.createElement('div'),{className:'hint geo-hint'}));
+    hint.textContent='自動找位置中…';const g=await geocode(v);
+    if(g&&pickerSet){pickerSet(g.lat,g.lng,true,12);hint.textContent='已自動定位：'+g.label+'（可以在下方地圖點一下微調）'}else hint.textContent='找不到這個地名，請在下方搜尋或直接點地圖'})});
   const first=$('input.inp,textarea.inp',form);if(first&&window.innerWidth>640)setTimeout(()=>first.focus(),80);
 }
 function setupPicker(d){
   const t=T(),latI=$('[data-k=lat]'),lngI=$('[data-k=lng]');
-  const set=(la,ln,pan)=>{latI.value=(+la).toFixed(6);lngI.value=(+ln).toFixed(6);if(pickMap){mk.setLatLng([la,ln]);if(pan)pickMap.setView([la,ln],Math.max(pickMap.getZoom(),15))}};
-  let mk=null;
+  const set=(la,ln,pan,zm)=>{latI.value=(+la).toFixed(6);lngI.value=(+ln).toFixed(6);if(pickMap&&mk){mk.setLatLng([la,ln]);mk.setOpacity(1);if(pan)pickMap.setView([la,ln],zm||Math.max(pickMap.getZoom(),15))}};
+  let mk=null;pickerSet=set;
   if(hasL()){const c=num(d.lat)?[d.lat,d.lng]:t.center;
     setTimeout(()=>{pickMap=makeMap($('#pickMap'),c,num(d.lat)?15:t.zoom);pickMap.scrollWheelZoom.enable();
       mk=L.marker(c,{draggable:true,icon:mkIcon('#F24E07',ic('pin'))}).addTo(pickMap);if(!num(d.lat))mk.setOpacity(.45);
@@ -1782,6 +1845,17 @@ const F={
  member:[{k:'name',label:'名字／組別名稱',full:1,ph:'例如：小美、Stacy & James'},{k:'animal',label:'選一隻代表動物',type:'animal'}],
  group:[{k:'title',label:'清單名稱',full:1}]
 };
+const cityFields=()=>{const t=T();return [{k:'name',label:'城市名稱（中文）',ph:'例如：寧平、下龍灣',geo:1},{k:'local',label:'當地／英文名稱',ph:'Ninh Bình',geo:1},
+  {k:'days',label:'哪幾天在這個城市',type:'pick',opts:t.days.map((d,i)=>({v:String(i),l:`DAY ${i+1}・${md(dayDate(t,i))}`}))},{k:'loc',label:'城市位置（輸入名稱會自動帶入）',type:'latlng'}]};
+function editCity(c){const t=T(),isNew=!c;c=c||{id:uid('c'),name:'',local:''};
+  const days=t.days.map((d,i)=>cityOf(d.city).id===c.id?String(i):null).filter(x=>x!=null);
+  openForm({title:isNew?'新增城市':'編輯城市',fields:cityFields(),data:{...c,days},note:isNew?'輸入城市名稱會自動找到位置；勾選的日子，天氣和地圖都會改用這個城市。':'',
+    onSave:o=>{if(!o.name){toast('請輸入城市名稱');return false}if(!(num(o.lat)&&num(o.lng))){toast('還沒找到城市位置，請在地圖上點一下');return false}
+      const T0=T(),n={id:c.id,name:o.name,local:o.local,lat:o.lat,lng:o.lng},ix=T0.cities.findIndex(x=>x.id===c.id);if(ix>=0)T0.cities[ix]=n;else T0.cities.push(n);
+      if(ix===0){T0.city=n.name;T0.cityLocal=n.local||n.name;T0.center=[n.lat,n.lng]}
+      const pick=new Set(o.days||[]);T0.days.forEach((d,i)=>{if(pick.has(String(i)))d.city=c.id;else if(d.city===c.id)d.city=''})},
+    onDelete:isNew||t.cities[0].id===c.id?null:()=>confirmBox(`刪除城市「${esc(c.name)}」？<br><small>原本排在這個城市的日子會改回 ${esc(t.cities[0].name)}，景點和行程不會被刪。</small>`,()=>{const T0=T();T0.cities=T0.cities.filter(x=>x.id!==c.id);T0.days.forEach(d=>{if(d.city===c.id)d.city=''});commit()},'刪除')});
+}
 const spotFields=()=>[{k:'name',label:'名稱',full:1},{k:'local',label:'當地名稱／地址',full:1},{k:'cat',label:'類別',type:'select',opts:T().categories.map(c=>({v:c.id,l:c.name}))},{k:'must',label:'必去',type:'check',text:'標記為「必去」'},{k:'note',label:'備註／推薦理由',type:'textarea'},{k:'url',label:'自訂連結（選填，例如 Google Maps 或 IG）',full:1,ph:'https://'},{k:'loc',label:'位置',type:'latlng'}];
 const stopFields=(dayI)=>{const t=T();return [
   {k:'day',label:'哪一天',type:'select',opts:t.days.map((d,i)=>({v:i,l:`DAY ${i+1} · ${md(dayDate(t,i))} ${d.title||''}`}))},
@@ -1808,7 +1882,7 @@ function editSpot(s){const t=T(),isNew=!s;s=s||{id:uid('s'),cat:S.ui.spotCat&&S.
 function delSpot(id){const t=T(),s=t.spots.find(x=>x.id===id),used=t.days.reduce((a,d)=>a+d.stops.filter(x=>x.ref===id).length,0);
   confirmBox(`確定刪除「${esc(s.name)}」？${used?`<br><small>它目前排在行程中 ${used} 次，也會一併移除。</small>`:''}`,()=>{t.spots=t.spots.filter(x=>x.id!==id);t.days.forEach(d=>d.stops=d.stops.filter(x=>x.ref!==id));commit();toast('已刪除')},'刪除')}
 function editSimple(kind,key,item,title,defaults={}){const isNew=!item;item=item||{id:uid(kind[0]),...defaults};
-  openForm({title:(isNew?'新增':'編輯')+title,fields:F[kind],data:item,onSave:o=>{const L=T()[key],cur=L.find(x=>x.id===item.id);if(cur)Object.assign(cur,o);else L.push({...item,...o})},
+  openForm({title:(isNew?'新增':'編輯')+title,fields:F[kind],data:item,onSave:o=>{const L=T()[key],cur=L.find(x=>x.id===item.id);if(cur)Object.assign(cur,o);else L.push({...item,...o});if(kind==='flight')setTimeout(()=>syncTripFromFlight(o),150)},
     onDelete:isNew?null:()=>confirmBox(`確定刪除這個${title}？`,()=>{T()[key]=T()[key].filter(x=>x.id!==item.id);commit()},'刪除')})}
 function editHotel(h){const t=T(),isNew=!h;h=h||{id:uid('h'),checkIn:t.start,checkOut:t.end,inTime:'15:00',outTime:'11:00',rooms:[]};
   const data={...h,roomsTxt:(h.rooms||[]).map(r=>`${r.name}: ${r.people||''}`).join('\n')};
@@ -1818,7 +1892,7 @@ function editHotel(h){const t=T(),isNew=!h;h=h||{id:uid('h'),checkIn:t.start,che
     const L=T().hotels,ix=L.findIndex(x=>x.id===h.id);if(ix>=0)L[ix]=n;else L.push(n)},
     onDelete:isNew?null:()=>confirmBox(`確定刪除「${esc(h.name)}」？`,()=>{t.hotels=t.hotels.filter(x=>x.id!==h.id);t.days.forEach(d=>d.stops=d.stops.filter(x=>x.ref!=='hotel:'+h.id));commit()},'刪除')})}
 const tripFields=(isNew)=>[
-  {k:'name',label:'旅程名稱',full:1,ph:'例如：京都楓葉小旅行'},{k:'city',label:'城市（中文）',ph:'京都'},{k:'cityLocal',label:'城市（當地／英文，Hero 大字）',ph:'Kyoto'},
+  {k:'name',label:'旅程名稱',full:1,ph:'例如：京都楓葉小旅行'},{k:'city',label:'主要城市（中文）',ph:'京都',geo:1},{k:'cityLocal',label:'城市（當地／英文，Hero 大字）',ph:'Kyoto',geo:1},
   {k:'start',label:'出發日',type:'date'},{k:'end',label:'回程日',type:'date'},
   ...(isNew?[]:[{k:'eyebrow',label:'英文眉題',ph:'JAPAN · AUTUMN TRIP',full:1},{k:'greeting',label:'招呼語（Hero 與頁尾）',ph:'Konnichiwa, Kyoto!',full:1}]),
   {k:'curLocal',label:'當地幣別代碼',ph:'JPY',mono:1},{k:'curLocalSym',label:'當地幣別符號',ph:'¥'},
@@ -1826,7 +1900,7 @@ const tripFields=(isNew)=>[
   {k:'zoom',label:'地圖預設縮放（12 全市／14 市中心）',type:'number'},
   {k:'climateNote',label:'季節天氣參考（顯示在天氣區）',type:'textarea',ph:'11 月京都約 8–17°C，早晚冷…'},
   ...(isNew?[{k:'copyCats',label:'',type:'check',text:'沿用目前旅程的「景點類別」'},{k:'copyMembers',label:'',type:'check',text:'沿用目前的「旅伴」'},{k:'copyTodos',label:'',type:'check',text:'沿用「待辦清單」（勾選會清空）'},{k:'copyFlightsTpl',label:'',type:'check',text:'建立去／回程空白航班卡'}]:[]),
-  {k:'loc',label:'地圖中心點（搜尋城市名稱即可）',type:'latlng'}];
+  {k:'loc',label:'地圖中心點（輸入上面的城市名稱會自動帶入）',type:'latlng'}];
 function editTrip(isNew){
   const cur=T(),base=isNew?{name:'',city:'',cityLocal:'',start:addDays(todayIso(),30),end:addDays(todayIso(),34),curLocal:'',curLocalSym:'',curHome:cur.currency.home,rate:1,zoom:13,copyCats:true,copyMembers:true,copyTodos:true,copyFlightsTpl:true}
     :{...cur,curLocal:cur.currency.local,curLocalSym:cur.currency.localSymbol,curHome:cur.currency.home,rate:cur.currency.rate,lat:cur.center[0],lng:cur.center[1]};
@@ -1838,11 +1912,11 @@ function editTrip(isNew){
       if(isNew){const t={id:uid('trip'),...common,eyebrow:'',greeting:'Bon voyage!',members:o.copyMembers?clone(cur.members):[{id:'m1',name:'我'}],
           categories:o.copyCats?clone(cur.categories):clone(DEFAULT_CATS),todos:o.copyTodos?clone(cur.todos).map(g=>({...g,items:g.items.map(i=>({id:i.id,text:i.text}))})):[],
           flights:o.copyFlightsTpl?[{id:uid('f'),dir:'去程',code:'',airline:'',from:'TPE',fromCity:'台北',to:'',toCity:o.city,date:common.start,dep:'',arr:'',style:'coffee'},{id:uid('f'),dir:'回程',code:'',airline:'',from:'',fromCity:o.city,to:'TPE',toCity:'台北',date:common.end,dep:'',arr:'',style:'green'}]:[],
-          transfers:[],hotels:[],spots:[],days:[],expenses:[]};
+          transfers:[],hotels:[],spots:[],days:[],expenses:[],cities:[{id:'c1',name:common.city,local:common.cityLocal,lat:o.lat,lng:o.lng}]};
         normalize(t);S.trips[t.id]=t;S.activeId=t.id;S.ui.day=0;S.ui.spotCat='all';wx=null;
         if(CLOUD.on&&isOwnerUser()){setTimeout(()=>uploadTrip(t),50)}
         else setTimeout(()=>{if(heroMap)heroMap.setView(t.center,t.zoom);loadWeather(true);toast('新旅程建立好了！打開編輯模式開始填內容')},50)}
-      else{const moved=cur.center[0]!==o.lat||cur.center[1]!==o.lng;Object.assign(cur,common,{eyebrow:o.eyebrow,greeting:o.greeting,isSample:false});syncDays(cur);if(moved){heroMap&&heroMap.setView(cur.center,cur.zoom);loadWeather(true)}}
+      else{const moved=cur.center[0]!==o.lat||cur.center[1]!==o.lng;Object.assign(cur,common,{eyebrow:o.eyebrow,greeting:o.greeting,isSample:false});cur.cities[0]={...cur.cities[0],name:common.city,local:common.cityLocal,lat:o.lat,lng:o.lng};syncDays(cur);if(moved){heroMap&&heroMap.setView(cur.center,cur.zoom);loadWeather(true)}}
     }});
 }
 
@@ -1866,6 +1940,10 @@ function renderDrawer(){
       </div>${CLOUD.owner?'':`<div class="owner-hint">${ic('users')}<span>配色、頭像風格、景點類別、旅伴管理是<b>主辦人</b>專用。主辦人請在上方「雲端共編」按「主辦人登入（Google）」，登入後就會出現。</span></div>`}<div class="flabel" style="margin:14px 0 8px">版面（只存在這台裝置）</div>
       <div class="seg"><button class="${layout()==='tabs'?'on':''}" data-act="layout" data-m="tabs">App 分頁</button><button class="${layout()==='page'?'on':''}" data-act="layout" data-m="page">一頁式長頁</button></div>
       <p class="hint" style="margin:8px 0 0">App 分頁：點下方（桌機在上方）按鈕切換內容，適合旅途中用手機查。一頁式：全部內容往下滑，適合出發前整體檢查。</p>
+    </div>
+    <div class="dr-sec owner-only"><h4><span class="mono">03</span>城市（多城市旅行）<button class="btn sm" style="margin-left:auto" data-act="city-add">${ic('plus')}新增</button></h4>
+      ${t.cities.map((c,k)=>`<div class="cat-row"><span class="cat-ic" style="--c:${k?'var(--leaf)':'var(--pop)'}">${ic('pin')}</span><span>${esc(c.name)} <small class="mono" style="color:var(--muted)">${k?'':'主要城市 · '}${t.days.filter(d=>cityOf(d.city).id===c.id).length} 天</small></span><button class="ibtn sm plain" data-act="city-edit" data-id="${c.id}">${ic('pencil')}</button>${k?`<button class="ibtn sm plain" data-act="city-del" data-id="${c.id}">${ic('trash')}</button>`:''}</div>`).join('')}
+      <p class="hint" style="margin:8px 0 0">只有一個城市時跟原本一樣。加入第二個城市並勾選日子後，天氣會分城市顯示、每日分頁會標出城市。</p>
     </div>
     <div class="dr-sec owner-only"><h4><span class="mono">03</span>景點類別 <button class="btn sm" style="margin-left:auto" data-act="cat-add">${ic('plus')}新增</button></h4>
       ${t.categories.map(c=>`<div class="cat-row"><span class="cat-ic" style="--c:${c.color}">${ic(c.icon)}</span><span>${esc(c.name)} <small class="mono" style="color:var(--muted)">${t.spots.filter(s=>s.cat===c.id).length}</small></span><button class="ibtn sm plain" data-act="cat-edit" data-id="${c.id}">${ic('pencil')}</button><button class="ibtn sm plain" data-act="cat-del" data-id="${c.id}">${ic('trash')}</button></div>`).join('')||'<div class="hint">還沒有類別</div>'}
@@ -1947,7 +2025,18 @@ const A={
    if(!opts.length)return toast('口袋名單的景點都已經在這天了');
    openForm({title:`DAY ${di+1} 加入景點`,note:'勾選的景點會先放進「候選」，地圖上可以一起比對位置，之後再排上午／下午或精確時間。',fields:[{k:'ids',label:'口袋名單',type:'pick',opts}],data:{ids:[]},saveLabel:'加入',
      onSave:o=>{if(!o.ids.length){toast('還沒勾選景點');return false}const d=T().days[di];o.ids.forEach(id=>d.stops.push({id:uid('st'),ref:id}));S.ui.day=di;toast(`已加入 ${o.ids.length} 個候選景點`)}})},'stop-edit':el=>{const f=findStop(el.dataset.id);f&&editStop(f.s,f.i)},'stop-del':el=>delStop(el.dataset.id),
- 'day-edit':el=>{const i=+el.dataset.i,d=T().days[i];openForm({title:`DAY ${i+1} 設定`,fields:F.day,data:d,onSave:o=>{Object.assign(T().days[i],o)}})},
+ 'day-edit':el=>{const i=+el.dataset.i,t=T(),d=t.days[i];
+   const swap={k:'swap',label:'改到哪一天（和那天的行程對調）',type:'select',full:1,opts:[{v:'',l:`維持 DAY ${i+1}・${md(dayDate(t,i))}（${wk(dayDate(t,i))}）`},...t.days.map((x,k)=>k===i?null:{v:k,l:`換到 DAY ${k+1}・${md(dayDate(t,k))}（${wk(dayDate(t,k))}）${x.title?' — '+x.title:''}`}).filter(Boolean)]};
+   const cityF=multiCity()?[{k:'city',label:'這天在哪個城市',type:'select',full:1,opts:t.cities.map(c=>({v:c.id,l:c.name}))}]:[];
+   openForm({title:`DAY ${i+1} 設定`,fields:[...F.day,...cityF,swap],data:{...d,city:cityOf(d.city).id,swap:''},
+     note:CLOUD.owner?'要改整趟旅程的出發／回程日期，請到後台「旅程設定」。':'',
+     onSave:o=>{const T0=T(),D=T0.days[i];D.title=o.title;D.tag=o.tag;D.area=o.area;if(o.city!=null)D.city=o.city===T0.cities[0].id?'':o.city;
+       if(o.swap!==''&&o.swap!=null){const j=+o.swap,tmp=T0.days[j];T0.days[j]=D;T0.days[i]=tmp;S.ui.day=j;setTimeout(()=>toast(`已把這天的行程移到 DAY ${j+1}`),100)}},
+     onDelete:CLOUD.owner&&t.days.length>1?()=>confirmBox(`刪除 DAY ${i+1}（${md(dayDate(t,i))}）和這天的 ${d.stops.length} 個行程？<br><small>${i===0?'出發日會往後一天。':'後面的天數會往前遞補，回程日提早一天。'}</small>`,()=>{const T1=T();T1.days.splice(i,1);if(i===0)T1.start=addDays(T1.start,1);else T1.end=addDays(T1.end,-1);syncDays(T1);S.ui.day=Math.max(0,i-1);commit();toast('已刪除這一天')},'刪除這天'):null})},
+ 'day-add':el=>{const t=T(),front=el.dataset.pos==='front';
+   confirmBox(front?`在 DAY 1 前面加一天？出發日會改成 ${md(addDays(t.start,-1))}。`:`在最後加一天？回程日會改成 ${md(addDays(t.end,1))}。`,()=>{const T1=T();
+     if(front){T1.start=addDays(T1.start,-1);T1.days.unshift({id:uid('d'),title:'',tag:'',stops:[]});S.ui.day=0}else{T1.end=addDays(T1.end,1);syncDays(T1);S.ui.day=T1.days.length-1}
+     commit();toast('已新增一天')},'加一天',false)},
  'flight-add':()=>editSimple('flight','flights',null,'航班',{dir:'去程',style:'coffee',date:T().start}),'flight-edit':el=>editSimple('flight','flights',T().flights.find(x=>x.id===el.dataset.id),'航班'),
  'flight-del':el=>confirmBox('確定刪除這張航班卡？',()=>{T().flights=T().flights.filter(x=>x.id!==el.dataset.id);commit()},'刪除'),
  'transfer-add':()=>editSimple('transfer','transfers',null,'接送／交通',{status:'待確認'}),'transfer-edit':el=>editSimple('transfer','transfers',T().transfers.find(x=>x.id===el.dataset.id),'接送／交通'),
@@ -1966,9 +2055,9 @@ const A={
  'set-me':el=>setMe(el.dataset.id),
  'join-me':()=>openForm({title:'加入這趟旅程',note:'輸入你的名字、選一隻代表你的動物，就會出現在旅伴名單裡，記帳時也會自動帶入你。',fields:F.member,data:{name:'',animal:ANIMAL_KEYS[T().members.length%ANIMAL_KEYS.length]},saveLabel:'加入',
    onSave:o=>{if(!o.name){toast('請輸入名字');return false}const id=uid('m');T().members.push({id,name:o.name,animal:o.animal||'cat'});S.ui.me=S.ui.me||{};S.ui.me[T().id]=id;if(S.ui.exp)S.ui.exp.payer=id;setTimeout(()=>toast(`歡迎加入，${o.name}！`),100)}}),
- 'edit-me':()=>{const id=myId();if(!id)return A['join-me']();A['mem-edit']({dataset:{id}})},'mem-edit':el=>{const id=el.dataset.id,m=T().members.find(x=>x.id===id);openForm({title:'編輯旅伴',fields:F.member,data:m,onSave:o=>{if(!o.name)return false;Object.assign(T().members.find(x=>x.id===id)||{},o)}})},
- 'mem-del':el=>{const t=T(),id=el.dataset.id,used=t.expenses.some(e=>e.payer===id||(e.shares||[]).includes(id));if(used)return toast('這位旅伴已有分帳紀錄，無法刪除（可改名）');
-   confirmBox('確定刪除這位旅伴？',()=>{t.members=t.members.filter(m=>m.id!==id);commit()},'刪除')},
+ 'edit-me':()=>{const id=myId();if(!id)return A['join-me']();A['mem-edit']({dataset:{id}})},'mem-edit':el=>{const id=el.dataset.id,m=T().members.find(x=>x.id===id);openForm({title:'編輯旅伴',fields:F.member,data:m,onSave:o=>{if(!o.name)return false;Object.assign(T().members.find(x=>x.id===id)||{},o)},onDelete:CLOUD.owner?()=>A['mem-del']({dataset:{id}}):null})},
+ 'mem-del':(el,e)=>{if(e&&e.stopPropagation)e.stopPropagation();const t=T(),id=el.dataset.id,m=t.members.find(x=>x.id===id),used=t.expenses.some(x=>x.payer===id||(x.shares||[]).includes(id));if(!m)return;if(used)return toast(`${m.name} 已有分帳紀錄，無法刪除（可以改名）`);
+   confirmBox(`刪除旅伴「${esc(m.name)}」？`,()=>{T().members=T().members.filter(x=>x.id!==id);commit()},'刪除')},
  'hotel-add':()=>editHotel(null),'hotel-edit':el=>editHotel(T().hotels.find(x=>x.id===el.dataset.id)),
  'hotel-del':el=>{const h=T().hotels.find(x=>x.id===el.dataset.id);confirmBox(`確定刪除「${esc(h.name)}」？`,()=>{T().hotels=T().hotels.filter(x=>x.id!==h.id);commit()},'刪除')},
  reveal:el=>el.classList.toggle('blur'),
@@ -1986,7 +2075,7 @@ const A={
  'ledger-copy':()=>{const t=T();const o={trip:t.id,members:t.members,expenses:t.expenses};copyText(JSON.stringify(o));download(`${t.name}-分帳.json`,JSON.stringify(o,null,1))},
  'ledger-import':()=>importDialog(o=>{const t=T(),list=Array.isArray(o)?o:o.expenses;if(!Array.isArray(list))return toast('找不到分帳資料');
    if(Array.isArray(o.members))o.members.forEach(m=>{if(!t.members.some(x=>x.id===m.id))t.members.push(m)});const ids=new Set(t.expenses.map(e=>e.id));let n=0;list.forEach(e=>{if(e&&e.id&&!ids.has(e.id)){t.expenses.push(e);n++}});commit();toast(`合併了 ${n} 筆新紀錄`)},'匯入分帳紀錄'),
- 'trip-switch':el=>{S.activeId=el.dataset.id;S.ui.day=null;S.ui.spotCat='all';wx=null;save();renderAll();if(heroMap)heroMap.setView(T().center,T().zoom);loadWeather();closeDrawer();toast('已切換到「'+T().name+'」')},
+ 'trip-switch':el=>{S.ui.wxCity=null;S.activeId=el.dataset.id;S.ui.day=null;S.ui.spotCat='all';wx=null;save();renderAll();if(heroMap)heroMap.setView(T().center,T().zoom);loadWeather();closeDrawer();toast('已切換到「'+T().name+'」')},
  'trip-dup':el=>{const src=S.trips[el.dataset.id],c=clone(src);c.id=uid('trip');c.name=src.name+'（副本）';c.isSample=false;c.expenses=[];S.trips[c.id]=c;save();renderDrawer();toast('已複製一份旅程')},
  'trip-del':el=>{const x=S.trips[el.dataset.id];confirmBox(`刪除旅程「${esc(x.name)}」？這台裝置上的資料會一起消失（建議先下載 JSON 備份）。`,()=>{delete S.trips[x.id];if(S.activeId===x.id){S.activeId=Object.keys(S.trips)[0];wx=null;loadWeather();heroMap&&heroMap.setView(T().center,T().zoom)}commit()},'刪除')},
  'trip-new':()=>{closeDrawer();editTrip(true)},'trip-edit':()=>{closeDrawer();editTrip(false)},
@@ -2003,6 +2092,11 @@ const A={
  reflip:()=>{lastFlip=null;renderHero()},
  'search-toggle':()=>{const b=$('#searchBar'),open=b.hidden;b.hidden=!open;document.body.classList.toggle('searching',open);if(open){const i=$('#gq');i.value=S.ui.q||'';setTimeout(()=>i.focus(),30)}else if(!S.ui.q){}},
  'search-clear':()=>{S.ui.q='';const i=$('#gq');if(i)i.value='';renderSpots();$('#searchBar').hidden=true;document.body.classList.remove('searching')},
+ 'city-add':()=>{closeDrawer();editCity(null)},'city-edit':el=>{closeDrawer();editCity(T().cities.find(c=>c.id===el.dataset.id))},
+ 'city-del':el=>{const c=T().cities.find(x=>x.id===el.dataset.id);confirmBox(`刪除城市「${esc(c.name)}」？<br><small>原本排在這個城市的日子會改回主要城市，景點和行程不會被刪。</small>`,()=>{const T0=T();T0.cities=T0.cities.filter(x=>x.id!==c.id);T0.days.forEach(d=>{if(d.city===c.id)d.city=''});commit();renderDrawer()},'刪除')},
+ 'wx-city':el=>{S.ui.wxCity=el.dataset.id;wx=null;save();loadWeather()},
+ 'city-jump':el=>{const c=cityOf(el.dataset.id);if(heroMap&&hasLL(c))heroMap.flyTo([c.lat,c.lng],c.id===T().cities[0].id?T().zoom:13,{duration:.8})},
+ 'spot-city':el=>{S.ui.spotCity=el.dataset.id;renderSpots()},
  'map-toggle':el=>setMap(el.dataset.k,!mapOpen(el.dataset.k)),
  'fl-collapse':()=>{S.ui.flCol=!S.ui.flCol;save();renderFlights()},
  'reset-all':()=>confirmBox('清除這台裝置上所有旅程資料，回到網頁內建的版本？（分帳與勾選都會消失）',()=>{try{localStorage.removeItem(KEY)}catch(e){}location.reload()},'清除'),
