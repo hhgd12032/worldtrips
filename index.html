@@ -1150,6 +1150,7 @@ const IC={
  download:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>',
  upload:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>',
  copy:'<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+ down:'<path d="M12 5v14"/><path d="m6 13 6 6 6-6"/>',
  search:'<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
  users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/>',
  drop:'<path d="M12 2.7 6.3 8.4a8 8 0 1 0 11.4 0z"/>',
@@ -1883,7 +1884,9 @@ function fieldHtml(f,d){
     case 'latlng':return `<div class="${cls}"${when}>${lab}
       <div class="mini-map" id="pickMap"></div>
       <div class="row-inline"><input class="inp mono" data-k="lat" type="number" step="any" placeholder="緯度 lat" value="${num(d.lat)?d.lat:''}"><input class="inp mono" data-k="lng" type="number" step="any" placeholder="經度 lng" value="${num(d.lng)?d.lng:''}"></div></div>`;
-    default:return `<div class="${cls}"${when}>${lab}<input ${f.geo?'data-geo="1"':''} class="inp ${f.mono?'mono':''}" type="${f.type||'text'}" ${f.type==='number'?'step="any"':''} data-k="${f.k}" value="${esc(v)}" placeholder="${esc(f.ph||'')}">${hint}</div>`;
+    default:{const inp=`<input ${f.geo?'data-geo="1"':''} class="inp ${f.mono?'mono':''}" type="${f.type||'text'}" ${f.type==='number'?'step="any"':''} data-k="${f.k}" value="${esc(v)}" placeholder="${esc(f.ph||'')}">`;
+      const tools=(f.moveTo?`<button type="button" class="ibtn sm" data-move="${f.k}>${f.moveTo}" title="移到下一欄">${ic('down')}</button>`:'')+(f.copy?`<button type="button" class="ibtn sm" data-fcopy="${f.k}" title="複製">${ic('copy')}</button>`:'');
+      return `<div class="${cls}"${when}>${lab}${tools?`<div class="row-inline">${inp}${tools}</div>`:inp}${hint}</div>`}
   }
 }
 function openForm({title,fields,data={},onSave,onDelete,saveLabel='儲存',note}){
@@ -1903,7 +1906,9 @@ function openForm({title,fields,data={},onSave,onDelete,saveLabel='儲存',note}
     if(b.dataset.sw){const w=b.parentElement;w.dataset.v=b.dataset.sw;$$('button',w).forEach(x=>x.classList.toggle('on',x===b))}
     if(b.dataset.ic){const w=b.parentElement;w.dataset.v=b.dataset.ic;$$('button',w).forEach(x=>x.classList.toggle('on',x===b))}
     if(b.dataset.an){const w=b.parentElement;w.dataset.v=b.dataset.an;$$('button',w).forEach(x=>x.classList.toggle('on',x===b))}
-    if(b.dataset.pv!=null)b.classList.toggle('on')});
+    if(b.dataset.pv!=null)b.classList.toggle('on');
+    if(b.dataset.fcopy){const el=$(`[data-k=${b.dataset.fcopy}]`,form);if(el&&el.value.trim())copyText(el.value.trim());else toast('欄位是空的')}
+    if(b.dataset.move){const[a,c]=b.dataset.move.split('>'),fa=$(`[data-k=${a}]`,form),fc=$(`[data-k=${c}]`,form);if(fa&&fc&&fa.value.trim()){fc.value=fa.value.trim();fa.value='';fa.focus();toast('已移到「當地名稱」，可以輸入中文名稱了')}}});
   const doSave=()=>{const o=collect();if(onSave(o)!==false){closeModal();commit()}};
   $('#mSave').onclick=doSave;form.onsubmit=e=>{e.preventDefault();doSave()};
   if(onDelete)$('#mDel').onclick=()=>{closeModal();onDelete()};
@@ -1990,7 +1995,7 @@ function editCity(c){const t=T(),isNew=!c;c=c||{id:uid('c'),name:'',local:''};
       const pick=new Set(o.days||[]);T0.days.forEach((d,i)=>{if(pick.has(String(i)))d.city=c.id;else if(d.city===c.id)d.city=''})},
     onDelete:isNew||t.cities[0].id===c.id?null:()=>confirmBox(`刪除城市「${esc(c.name)}」？<br><small>原本排在這個城市的日子會改回 ${esc(t.cities[0].name)}，景點和行程不會被刪。</small>`,()=>{const T0=T();T0.cities=T0.cities.filter(x=>x.id!==c.id);T0.days.forEach(d=>{if(d.city===c.id)d.city=''});commit()},'刪除')});
 }
-const spotFields=()=>[{k:'url',label:'Google Maps 連結',full:1,ph:'貼上 Google Maps 分享的連結，會自動帶入座標'},{k:'name',label:'名稱',full:1},{k:'local',label:'當地名稱／地址',full:1},{k:'cat',label:'類別',type:'select',opts:T().categories.map(c=>({v:c.id,l:c.name}))},{k:'must',label:'必去',type:'check',text:'標記為「必去」'},{k:'note',label:'備註／推薦理由',type:'textarea'},{k:'loc',label:'位置',type:'latlng'}];
+const spotFields=()=>[{k:'url',label:'Google Maps 連結',full:1,ph:'貼上 Google Maps 分享的連結，會自動帶入座標'},{k:'name',label:'名稱',full:1,copy:1,moveTo:'local'},{k:'local',label:'當地名稱／地址',full:1,copy:1},{k:'cat',label:'類別',type:'select',opts:T().categories.map(c=>({v:c.id,l:c.name}))},{k:'must',label:'必去',type:'check',text:'標記為「必去」'},{k:'note',label:'備註／推薦理由',type:'textarea'},{k:'loc',label:'位置',type:'latlng'}];
 const stopFields=(dayI)=>{const t=T();return [
   {k:'day',label:'哪一天',type:'select',opts:t.days.map((d,i)=>({v:i,l:`DAY ${i+1} · ${md(dayDate(t,i))} ${d.title||''}`}))},
   {k:'tmode',label:'什麼時候去',type:'select',opts:[{v:'none',l:'先放著（候選）'},{v:'order',l:'排進行程，先不填時間（之後拖曳排順序）'},{v:'slot',l:'大概時段（上午／下午／晚上）'},{v:'exact',l:'精確時間'}]},
