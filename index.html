@@ -790,6 +790,12 @@ body.is-dragging *{cursor:grabbing!important}
 .spot-top .copy{margin-top:8px}
 .spot-top h4,.spot-top .lc{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .spot-top .lc{line-height:1.35}
+.imp-steps{display:flex;flex-direction:column;gap:12px}
+.imp-step{display:flex;gap:10px;align-items:flex-start}
+.imp-step .n{flex:none;width:24px;height:24px;border-radius:50%;background:var(--ink);color:var(--paper);display:grid;place-items:center;font-family:var(--f-num);font-size:12px;font-weight:700;margin-top:1px}
+.imp-step b{display:block;font-size:14.5px;color:var(--ink)}
+.imp-step small{display:block;font-size:12px;color:var(--muted,#8a7f78);margin-top:2px}
+.imp-step .btn{margin-top:8px}
 
 </style>
 </head>
@@ -2049,13 +2055,16 @@ function importPlan(arr){const t=T(),norm=v=>String(v||'').trim().toLowerCase();
 function isOwnerish(){return !!CLOUD.owner||!CLOUD.on}
 function spotImport(){const t=T();
   openModal(`<div class="m-head"><h3>匯入景點</h3><button class="ibtn plain" data-act="close-modal">${ic('x')}</button></div>
-    <div class="m-body"><div class="field full"><label>貼上景點名單</label><textarea class="inp mono" id="impTxt" style="min-height:220px;font-size:13px" placeholder='[{"name":"中文名稱","local":"當地名稱","cat":"咖啡廳","must":false,"note":"推薦理由","lat":21.03,"lng":105.85}]'></textarea>
-      <div class="hint" id="impHint">請 Claude 幫你研究景點後，把它給的名單整段貼在這裡。</div>
-      <button type="button" class="btn sm" style="margin-top:8px" id="impFmt">${ic('copy')}複製格式說明（貼給 Claude）</button></div></div>
+    <div class="m-body"><div class="field full imp-steps">
+      <div class="imp-step"><span class="n">1</span><div><b>複製格式說明</b><small>已包含這趟旅程的城市和你們的類別</small><button type="button" class="btn sm solid" id="impFmt">${ic('copy')}複製格式說明</button></div></div>
+      <div class="imp-step"><span class="n">2</span><div><b>貼給 Claude，補上你的需求</b><small>例如：4 天、喜歡咖啡廳和古著、不想走太多路，找 15 個</small></div></div>
+      <div class="imp-step"><span class="n">3</span><div><b>把 Claude 的回覆整段貼在下面</b><small>前後的說明文字不用刪</small></div></div>
+      <textarea class="inp mono" id="impTxt" style="min-height:160px;font-size:13px" placeholder="在這裡貼上 Claude 的回覆"></textarea>
+      <div class="hint" id="impHint"></div></div></div>
     <div class="m-foot"><button class="btn" data-act="close-modal">取消</button><button class="btn solid" id="impGo" disabled>匯入</button></div>`);
   let plan=null;const hint=$('#impHint'),go=$('#impGo');
   $('#impTxt').oninput=e=>{const arr=importParse(e.target.value);plan=null;go.disabled=true;
-    if(!e.target.value.trim()){hint.textContent='請 Claude 幫你研究景點後，把它給的名單整段貼在這裡。';return}
+    if(!e.target.value.trim()){hint.textContent='';return}
     if(!arr||!arr.length){hint.textContent='讀不到景點，請確認是整段完整貼上。';return}
     plan=importPlan(arr);const noLL=plan.items.filter(s=>!hasLL(s)).length;
     hint.innerHTML=`可匯入 <b>${plan.items.length}</b> 個景點`+(plan.dup.length?`，略過 ${plan.dup.length} 個已存在的（${esc(plan.dup.slice(0,3).join('、'))}${plan.dup.length>3?'…':''}）`:'')+(plan.newCats.length?`，會新增類別：${esc(plan.newCats.map(c=>c.name).join('、'))}`:'')+(noLL?`，其中 ${noLL} 個沒有座標`:'')+'。';
