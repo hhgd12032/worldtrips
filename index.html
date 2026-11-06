@@ -1288,7 +1288,7 @@ const FB_SDK='https://www.gstatic.com/firebasejs/10.12.2/';
 const qsTrip=new URLSearchParams(location.search).get('t');
 const CLOUD={on:!!CFG,ready:false,user:null,tripId:null,ownerUid:null,owner:true,db:null,known:{},knownMeta:null,cache:{},loaded:new Set(),metaLoaded:false,status:CFG?'connecting':'local',myTrips:null,missing:false};
 const COLS=['spots','stops','days','flights','transfers','hotels','todoGroups','todos','expenses','members'];
-const META_KEYS=['name','city','cityLocal','country','eyebrow','greeting','start','end','center','zoom','currency','climateNote','theme','avaStyle','categories','isSample','cities'];
+const META_KEYS=['name','city','cityLocal','country','eyebrow','greeting','start','end','center','zoom','currency','climateNote','theme','avaStyle','categories','isSample','cities','resolver'];
 const stable=v=>{if(Array.isArray(v))return '['+v.map(stable).join(',')+']';if(v&&typeof v==='object')return '{'+Object.keys(v).filter(k=>v[k]!==undefined).sort().map(k=>JSON.stringify(k)+':'+stable(v[k])).join(',')+'}';return JSON.stringify(v===undefined?null:v)};
 const cleanObj=o=>JSON.parse(JSON.stringify(o));
 const isOwnerUser=()=>!!(CLOUD.user&&!CLOUD.user.isAnonymous);
@@ -1840,6 +1840,15 @@ async function geocode(q){
 }
 let pickerSet=null;
 
+/* 短網址解析器（Cloudflare Worker）與景點搜尋 */
+const resolverUrl=()=>(T().resolver||window.LINK_RESOLVER||'').trim();
+async function resolveLink(url){const base=resolverUrl();if(!base||!url)return null;try{const r=await fetch(base+(base.includes('?')?'&':'?')+'u='+encodeURIComponent(url));if(!r.ok)return null;const j=await r.json();return j&&!j.error?j:null}catch(e){return null}}
+async function findPlace(q,name){
+  const c=T().center;
+  try{const r=await fetch(`https://photon.komoot.io/api/?limit=1&lat=${c[0]}&lon=${c[1]}&q=${encodeURIComponent(q)}`);const j=await r.json();if(j.features&&j.features.length){const f=j.features[0].geometry.coordinates;if(km({lat:c[0],lng:c[1]},{lat:f[1],lng:f[0]})<300)return{lat:f[1],lng:f[0]}}}catch(e){}
+  try{const vb=[c[1]-1,c[0]+1,c[1]+1,c[0]-1].join(',');const r=await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&accept-language=zh-TW,en&viewbox=${vb}&q=${encodeURIComponent(q)}`);const j=await r.json();if(j.length)return{lat:+j[0].lat,lng:+j[0].lon}}catch(e){}
+  if(name&&name!==q)return findPlace(name);return null;
+}
 /* Google Maps 分享內容解析 */
 function parseGmaps(text){
   text=String(text||'').trim();if(!text)return null;
@@ -1871,7 +1880,7 @@ function fieldHtml(f,d){
     case 'animal':return `<div class="field full">${lab}<div class="animals" data-k="${f.k}" data-v="${esc(v||'cat')}">${ANIMAL_KEYS.map(k=>`<button type="button" class="${k===(v||'cat')?'on':''}" data-an="${k}">${avaHtml(k)}${ANIMALS[k].n}</button>`).join('')}</div></div>`;
     case 'pick':{const arr=Array.isArray(v)?v:[];return `<div class="${cls}"${when}>${lab}<div class="pick" data-k="${f.k}" data-multi="1">${f.opts.map(o=>`<button type="button" class="${arr.includes(o.v)?'on':''}" data-pv="${esc(o.v)}">${esc(o.l)}</button>`).join('')}</div></div>`}
     case 'latlng':return `<div class="${cls}"${when}>${lab}
-      <div class="row-inline"><input class="inp" id="geoQ" placeholder="搜尋地名或地址（OpenStreetMap）"><button type="button" class="btn sm" id="geoGo">${ic('search')}搜尋</button></div>
+      <div class="row-inline"><input class="inp" id="geoQ" placeholder="搜尋名稱／地址，或貼 Google Maps 連結"><button type="button" class="btn sm" id="geoGo">${ic('search')}搜尋</button></div>
       <div class="geo-res" id="geoRes"></div>
       <div class="mini-map" id="pickMap"></div>
       <div class="row-inline"><input class="inp mono" data-k="lat" type="number" step="any" placeholder="緯度 lat" value="${num(d.lat)?d.lat:''}"><input class="inp mono" data-k="lng" type="number" step="any" placeholder="經度 lng" value="${num(d.lng)?d.lng:''}"></div>
@@ -1903,16 +1912,18 @@ function openForm({title,fields,data={},onSave,onDelete,saveLabel='儲存',note}
   if(onDelete)$('#mDel').onclick=()=>{closeModal();onDelete()};
   if($('#pickMap'))setupPicker(data);
   const gp=$('[data-k=gpaste]',form);if(gp){const hint=Object.assign(document.createElement('div'),{className:'hint geo-hint'});gp.insertAdjacentElement('afterend',hint);
-    hint.textContent='Google 的 AI 評論沒有開放給一般網站讀取，備註請自己寫。';
-    gp.addEventListener('input',async()=>{const g=parseGmaps(gp.value);if(!g)return;const set=(k,v)=>{const el=$(`[data-k=${k}]`,form);if(el&&v)el.value=v};
-      set('name',g.name);set('local',g.addr);set('url',g.url);
-      let msg=[];if(g.name)msg.push('名稱');if(g.addr)msg.push('地址');
-      if(num(g.lat)&&pickerSet){pickerSet(g.lat,g.lng,true,16);msg.push('位置')}
-      else if(g.addr||g.name){hint.textContent='找位置中…';const c=T().center;let p=null;
-        try{const q=encodeURIComponent((g.addr||g.name));const vb=[c[1]-1,c[0]+1,c[1]+1,c[0]-1].join(',');const r2=await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&accept-language=zh-TW,en&viewbox=${vb}&q=${q}`);const j=await r2.json();if(j.length)p={lat:+j[0].lat,lng:+j[0].lon}}catch(e){}
-        if(!p&&g.name)p=await geocode(g.name+' '+(T().cityLocal||T().city||''));
-        if(p&&pickerSet){pickerSet(p.lat,p.lng,true,16);msg.push('位置（約略，請確認）')}}
-      hint.textContent=msg.length?`已帶入：${msg.join('、')}。類別和備註請自己選／寫。`:(g.short?'這是短網址，讀不到內容；請改貼「分享 → 複製」的完整文字，或在下方地圖點位置。':'讀不到資訊，請手動填寫。')})}
+    hint.textContent=resolverUrl()?'支援 Google Maps 分享的短網址，貼上就會自動帶入名稱、地址和座標。':'Google 的 AI 評論沒有開放給一般網站讀取，備註請自己寫。';
+    let seq=0;const run=async()=>{const my=++seq;const g=parseGmaps(gp.value);if(!g)return;const fill=(k,v,force)=>{const el=$(`[data-k=${k}]`,form);if(el&&v&&(force||!el.value))el.value=v};
+      fill('name',g.name,true);fill('local',g.addr,true);fill('url',g.url,true);
+      let got={name:!!g.name,addr:!!g.addr,pos:false};
+      if(num(g.lat)&&pickerSet){pickerSet(g.lat,g.lng,true,16);got.pos='exact'}
+      if(g.url&&(!got.pos||!g.name)&&resolverUrl()){hint.textContent='讀取 Google Maps 連結中…';const x=await resolveLink(g.url);if(my!==seq)return;
+        if(x){fill('name',x.name,!g.name);fill('local',x.address,!g.addr);if(x.name)got.name=true;if(x.address)got.addr=true;if(num(x.lat)&&pickerSet){pickerSet(x.lat,x.lng,true,16);got.pos='exact'}}}
+      if(!got.pos&&(g.addr||g.name)){hint.textContent='找位置中…';const p=await findPlace((g.addr||g.name),g.name);if(my!==seq)return;if(p&&pickerSet){pickerSet(p.lat,p.lng,true,16);got.pos='approx'}}
+      const msg=[];if(got.name)msg.push('名稱');if(got.addr)msg.push('地址');if(got.pos)msg.push(got.pos==='exact'?'座標':'位置（約略，請確認）');
+      hint.textContent=msg.length?`已帶入：${msg.join('、')}。類別和備註請自己選／寫。`:(g.short&&!resolverUrl()?'短網址需要先在後台設定「短網址解析器」才讀得到；或改貼分享文字、在下方地圖點位置。':'讀不到資訊，請手動填寫或在下方地圖點位置。')};
+    gp.addEventListener('input',run);
+    const uf=$('[data-k=url]',form);if(uf)uf.addEventListener('change',()=>{if(uf.value&&!gp.value){gp.value=uf.value;run()}})}
   $$('[data-geo]',form).forEach(inp=>{let last=inp.value;inp.addEventListener('change',async()=>{const v=inp.value.trim();if(!v||v===last)return;last=v;
     const hint=inp.parentElement.querySelector('.geo-hint')||inp.insertAdjacentElement('afterend',Object.assign(document.createElement('div'),{className:'hint geo-hint'}));
     hint.textContent='自動找位置中…';const g=await geocode(v);
@@ -1933,7 +1944,10 @@ function setupPicker(d){
   $('#gUrl').oninput=e=>{const p=parse(e.target.value);if(p){set(p[0],p[1],true);mk&&mk.setOpacity(1);toast('已從網址帶入座標')}};
   const go=async()=>{const q=$('#geoQ').value.trim();if(!q)return;const box=$('#geoRes');box.innerHTML='<div class="hint">搜尋中…</div>';
     try{const c=t.center,vb=[c[1]-.6,c[0]+.6,c[1]+.6,c[0]-.6].join(',');
-      const r=await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=6&accept-language=zh-TW,en&viewbox=${vb}&q=${encodeURIComponent(q)}`);const js=await r.json();
+      let js=[];
+      if(/goo\.gl|google\.[a-z.]+\/maps/.test(q)&&resolverUrl()){const x=await resolveLink(q);if(x&&num(x.lat))js.push({lat:x.lat,lon:x.lng,name:x.name,display_name:[x.name,x.address].filter(Boolean).join(' · ')||'Google Maps 地點'})}
+      try{const r1=await fetch(`https://photon.komoot.io/api/?limit=5&lat=${c[0]}&lon=${c[1]}&q=${encodeURIComponent(q)}`);const j1=await r1.json();(j1.features||[]).forEach(f=>{const p=f.properties||{};js.push({lat:f.geometry.coordinates[1],lon:f.geometry.coordinates[0],name:p.name,display_name:[p.name,p.street&&((p.housenumber?p.housenumber+' ':'')+p.street),p.district||p.city,p.country].filter(Boolean).join(', ')})})}catch(e){}
+      try{const r=await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=4&accept-language=zh-TW,en&viewbox=${vb}&q=${encodeURIComponent(q)}`);(await r.json()).forEach(x=>js.push(x))}catch(e){}
       box.innerHTML=js.length?js.map((x,i)=>`<button type="button" data-i="${i}">${esc(x.display_name)}</button>`).join(''):'<div class="hint">找不到，換個關鍵字（英文或越南文常比較準），或直接點地圖。</div>';
       $$('button',box).forEach(b=>b.onclick=()=>{const x=js[+b.dataset.i];set(+x.lat,+x.lon,true);mk&&mk.setOpacity(1);const n=$('[data-k=name]');if(n&&!n.value)n.value=x.name||x.display_name.split(',')[0];box.innerHTML=''})}
     catch(e){box.innerHTML='<div class="hint">搜尋服務暫時無法使用，請直接點地圖或貼座標。</div>'}};
@@ -2021,7 +2035,7 @@ function editTrip(isNew){
       if(isNew){const t={id:uid('trip'),...common,eyebrow:'',greeting:'Bon voyage!',members:o.copyMembers?clone(cur.members):[{id:'m1',name:'我'}],
           categories:o.copyCats?clone(cur.categories):clone(DEFAULT_CATS),todos:o.copyTodos?clone(cur.todos).map(g=>({...g,items:g.items.map(i=>({id:i.id,text:i.text}))})):[],
           flights:o.copyFlightsTpl?[{id:uid('f'),dir:'去程',code:'',airline:'',from:'TPE',fromCity:'台北',to:'',toCity:o.city,date:common.start,dep:'',arr:'',style:'coffee'},{id:uid('f'),dir:'回程',code:'',airline:'',from:'',fromCity:o.city,to:'TPE',toCity:'台北',date:common.end,dep:'',arr:'',style:'green'}]:[],
-          transfers:[],hotels:[],spots:[],days:[],expenses:[],cities:[{id:'c1',name:common.city,local:common.cityLocal,lat:o.lat,lng:o.lng}]};
+          transfers:[],hotels:[],spots:[],days:[],expenses:[],cities:[{id:'c1',name:common.city,local:common.cityLocal,lat:o.lat,lng:o.lng}],resolver:cur.resolver||''};
         normalize(t);S.trips[t.id]=t;S.activeId=t.id;S.ui.day=0;S.ui.spotCat='all';wx=null;
         if(CLOUD.on&&isOwnerUser()){setTimeout(()=>uploadTrip(t),50)}
         else setTimeout(()=>{if(heroMap)heroMap.setView(t.center,t.zoom);loadWeather(true);toast('新旅程建立好了！打開編輯模式開始填內容')},50)}
@@ -2049,6 +2063,11 @@ function renderDrawer(){
       </div>${CLOUD.owner?'':`<div class="owner-hint">${ic('users')}<span>配色、頭像風格、景點類別、旅伴管理是<b>主辦人</b>專用。主辦人請在上方「雲端共編」按「主辦人登入（Google）」，登入後就會出現。</span></div>`}<div class="flabel" style="margin:14px 0 8px">版面（只存在這台裝置）</div>
       <div class="seg"><button class="${layout()==='tabs'?'on':''}" data-act="layout" data-m="tabs">App 分頁</button><button class="${layout()==='page'?'on':''}" data-act="layout" data-m="page">一頁式長頁</button></div>
       <p class="hint" style="margin:8px 0 0">App 分頁：點下方（桌機在上方）按鈕切換內容，適合旅途中用手機查。一頁式：全部內容往下滑，適合出發前整體檢查。</p>
+    </div>
+    <div class="dr-sec owner-only"><h4><span class="mono">G</span>Google Maps 短網址解析器</h4>
+      <div class="share-box" style="margin-top:0"><input class="inp" id="resolverIn" placeholder="https://maps-link.你的帳號.workers.dev" value="${esc(t.resolver||'')}"><button class="btn sm solid" data-act="resolver-save">儲存</button></div>
+      <p class="hint" style="margin:8px 0 0">設定後，貼上 Google Maps 分享的短網址（maps.app.goo.gl）就能自動帶入名稱和精確座標。設定方式見 SETUP.md 第 7 步。</p>
+      ${(()=>{const n=t.spots.filter(s=>!hasLL(s)&&s.url).length;return n&&t.resolver?`<button class="btn sm" style="margin-top:8px" data-act="backfill">${ic('pin')}幫 ${n} 個有連結但沒座標的景點補座標</button>`:''})()}
     </div>
     <div class="dr-sec owner-only"><h4><span class="mono">03</span>城市（多城市旅行）<button class="btn sm" style="margin-left:auto" data-act="city-add">${ic('plus')}新增</button></h4>
       ${t.cities.map((c,k)=>`<div class="cat-row"><span class="cat-ic" style="--c:${k?'var(--leaf)':'var(--pop)'}">${ic('pin')}</span><span>${esc(c.name)} <small class="mono" style="color:var(--muted)">${k?'':'主要城市 · '}${t.days.filter(d=>cityOf(d.city).id===c.id).length} 天</small></span><button class="ibtn sm plain" data-act="city-edit" data-id="${c.id}">${ic('pencil')}</button>${k?`<button class="ibtn sm plain" data-act="city-del" data-id="${c.id}">${ic('trash')}</button>`:''}</div>`).join('')}
@@ -2211,6 +2230,8 @@ const A={
  'city-jump':el=>{const c=cityOf(el.dataset.id);if(heroMap&&hasLL(c))heroMap.flyTo([c.lat,c.lng],c.id===T().cities[0].id?T().zoom:13,{duration:.8})},
  'spot-city':el=>{S.ui.spotCity=el.dataset.id;renderSpots()},
  'copy-name':(el,e)=>{e.stopPropagation();copyText(el.dataset.v||'')},
+ 'resolver-save':async()=>{const v=$('#resolverIn').value.trim().replace(/\/$/,'');T().resolver=v;commit();if(!v)return toast('已清除');toast('測試中…');const x=await resolveLink('https://www.google.com/maps/place/Hoan+Kiem+Lake/@21.0287,105.8523,17z');toast(x?'已儲存，解析器運作正常 ✓':'已儲存，但測試失敗：請確認網址是否正確');renderDrawer()},
+ 'backfill':async()=>{const list=T().spots.filter(s=>!hasLL(s)&&s.url);let ok=0;toast(`補座標中（${list.length}）…`);for(const s of list){const x=await resolveLink(s.url);const cur=T().spots.find(y=>y.id===s.id);if(x&&num(x.lat)&&cur){cur.lat=x.lat;cur.lng=x.lng;if(!cur.local&&x.address)cur.local=x.address;ok++}}commit();renderDrawer();toast(`完成：${ok}/${list.length} 個景點已補上座標`)},
  'map-toggle':el=>setMap(el.dataset.k,!mapOpen(el.dataset.k)),
  'fl-collapse':()=>{S.ui.flCol=!S.ui.flCol;save();renderFlights()},
  'reset-all':()=>confirmBox('清除這台裝置上所有旅程資料，回到網頁內建的版本？（分帳與勾選都會消失）',()=>{try{localStorage.removeItem(KEY)}catch(e){}location.reload()},'清除'),
