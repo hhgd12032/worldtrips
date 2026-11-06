@@ -1850,6 +1850,7 @@ async function findPlace(q,name){
   if(name&&name!==q)return findPlace(name);return null;
 }
 /* Google Maps 分享內容解析 */
+function deName(v){v=String(v||'').trim();for(let i=0;i<3&&/%[0-9a-f]{2}|\+/i.test(v);i++){try{v=decodeURIComponent(v.replace(/\+/g,' '))}catch(e){v=v.replace(/\+/g,' ');break}}return v.trim()}
 function parseGmaps(text){
   text=String(text||'').trim();if(!text)return null;
   const urlM=text.match(/https?:\/\/\S+/),url=urlM?urlM[0].replace(/[)\]，。]+$/,''):'';
@@ -1880,12 +1881,8 @@ function fieldHtml(f,d){
     case 'animal':return `<div class="field full">${lab}<div class="animals" data-k="${f.k}" data-v="${esc(v||'cat')}">${ANIMAL_KEYS.map(k=>`<button type="button" class="${k===(v||'cat')?'on':''}" data-an="${k}">${avaHtml(k)}${ANIMALS[k].n}</button>`).join('')}</div></div>`;
     case 'pick':{const arr=Array.isArray(v)?v:[];return `<div class="${cls}"${when}>${lab}<div class="pick" data-k="${f.k}" data-multi="1">${f.opts.map(o=>`<button type="button" class="${arr.includes(o.v)?'on':''}" data-pv="${esc(o.v)}">${esc(o.l)}</button>`).join('')}</div></div>`}
     case 'latlng':return `<div class="${cls}"${when}>${lab}
-      <div class="row-inline"><input class="inp" id="geoQ" placeholder="搜尋名稱／地址，或貼 Google Maps 連結"><button type="button" class="btn sm" id="geoGo">${ic('search')}搜尋</button></div>
-      <div class="geo-res" id="geoRes"></div>
       <div class="mini-map" id="pickMap"></div>
-      <div class="row-inline"><input class="inp mono" data-k="lat" type="number" step="any" placeholder="緯度 lat" value="${num(d.lat)?d.lat:''}"><input class="inp mono" data-k="lng" type="number" step="any" placeholder="經度 lng" value="${num(d.lng)?d.lng:''}"></div>
-      <input class="inp" id="gUrl" placeholder="或貼上 Google Maps 網址／「緯度, 經度」自動帶入">
-      <div class="hint" id="gHint">${resolverUrl()?'點一下地圖即可放置座標，標記也可以拖曳。':'點一下地圖即可放置座標，標記也可以拖曳。Google 短網址需要先在後台設定「短網址解析器」。'}</div></div>`;
+      <div class="row-inline"><input class="inp mono" data-k="lat" type="number" step="any" placeholder="緯度 lat" value="${num(d.lat)?d.lat:''}"><input class="inp mono" data-k="lng" type="number" step="any" placeholder="經度 lng" value="${num(d.lng)?d.lng:''}"></div></div>`;
     default:return `<div class="${cls}"${when}>${lab}<input ${f.geo?'data-geo="1"':''} class="inp ${f.mono?'mono':''}" type="${f.type||'text'}" ${f.type==='number'?'step="any"':''} data-k="${f.k}" value="${esc(v)}" placeholder="${esc(f.ph||'')}">${hint}</div>`;
   }
 }
@@ -1942,7 +1939,7 @@ function linkAuto(form){
       let pos=num(g.lat)?[g.lat,g.lng]:null,name=g.name,addr='';
       if(!pos&&resolverUrl()){hint.textContent='讀取 Google Maps 連結中…';const x=await resolveLink(v);if(my!==seq)return;
         if(x){if(num(x.lat))pos=[x.lat,x.lng];name=name||x.name;addr=x.address||''}}
-      fill('name',name);fill(k==='gmap'?'address':'local',addr);
+      fill('name',deName(name));fill(k==='gmap'?'address':'local',deName(addr));
       if(pos&&pickerSet){pickerSet(pos[0],pos[1],true,16);hint.textContent='已從連結帶入座標 ✓'}
       else hint.textContent=resolverUrl()?'這個連結讀不到座標，請在下方地圖點位置。':'短網址需要先在後台設定「短網址解析器」才讀得到座標。'};
     el.addEventListener('input',()=>{clearTimeout(tm);tm=setTimeout(go,350)});el.addEventListener('change',go)})}
@@ -1957,7 +1954,7 @@ function setupPicker(d){
       pickMap.on('click',e=>{mk.setOpacity(1);set(e.latlng.lat,e.latlng.lng)})},120);
   }else $('#pickMap').innerHTML='<div class="skeleton">地圖無法載入，請直接輸入座標</div>';
   const parse=s=>{let m=s.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/)||s.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/)||s.match(/[?&](?:q|query|ll|destination)=(-?\d+\.\d+)(?:,|%2C)\s*(-?\d+\.\d+)/)||s.match(/^\s*(-?\d{1,2}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)\s*$/);return m?[+m[1],+m[2]]:null};
-  let gseq=0;$('#gUrl').oninput=async e=>{const v=e.target.value.trim(),my=++gseq;const p=parse(v);if(p){set(p[0],p[1],true);mk&&mk.setOpacity(1);toast('已從網址帶入座標');return}
+  let gseq=0;if($('#gUrl'))$('#gUrl').oninput=async e=>{const v=e.target.value.trim(),my=++gseq;const p=parse(v);if(p){set(p[0],p[1],true);mk&&mk.setOpacity(1);toast('已從網址帶入座標');return}
     if(/goo\.gl|maps\.app|google\.[a-z.]+\/maps/i.test(v)&&resolverUrl()){toast('讀取 Google Maps 連結中…');const x=await resolveLink(v);if(my!==gseq)return;
       if(x&&num(x.lat)){set(x.lat,x.lng,true);mk&&mk.setOpacity(1);toast('已從網址帶入座標')}else toast('這個連結讀不到座標')}};
   const go=async()=>{const q=$('#geoQ').value.trim();if(!q)return;const box=$('#geoRes');box.innerHTML='<div class="hint">搜尋中…</div>';
@@ -1969,7 +1966,7 @@ function setupPicker(d){
       box.innerHTML=js.length?js.map((x,i)=>`<button type="button" data-i="${i}">${esc(x.display_name)}</button>`).join(''):'<div class="hint">找不到，換個關鍵字（英文或越南文常比較準），或直接點地圖。</div>';
       $$('button',box).forEach(b=>b.onclick=()=>{const x=js[+b.dataset.i];set(+x.lat,+x.lon,true);mk&&mk.setOpacity(1);const n=$('[data-k=name]');if(n&&!n.value)n.value=x.name||x.display_name.split(',')[0];box.innerHTML=''})}
     catch(e){box.innerHTML='<div class="hint">搜尋服務暫時無法使用，請直接點地圖或貼座標。</div>'}};
-  $('#geoGo').onclick=go;$('#geoQ').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();go()}};
+  if($('#geoGo')){$('#geoGo').onclick=go;$('#geoQ').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();go()}}}
 }
 
 /* ================= entity forms ================= */
@@ -1993,7 +1990,7 @@ function editCity(c){const t=T(),isNew=!c;c=c||{id:uid('c'),name:'',local:''};
       const pick=new Set(o.days||[]);T0.days.forEach((d,i)=>{if(pick.has(String(i)))d.city=c.id;else if(d.city===c.id)d.city=''})},
     onDelete:isNew||t.cities[0].id===c.id?null:()=>confirmBox(`刪除城市「${esc(c.name)}」？<br><small>原本排在這個城市的日子會改回 ${esc(t.cities[0].name)}，景點和行程不會被刪。</small>`,()=>{const T0=T();T0.cities=T0.cities.filter(x=>x.id!==c.id);T0.days.forEach(d=>{if(d.city===c.id)d.city=''});commit()},'刪除')});
 }
-const spotFields=()=>[{k:'gpaste',label:'快速帶入：貼上 Google Maps 的分享內容或連結',type:'textarea',full:1,ph:'在 Google Maps 按「分享 → 複製」後貼在這裡，會自動帶入名稱、地址、位置'},{k:'name',label:'名稱',full:1},{k:'local',label:'當地名稱／地址',full:1},{k:'cat',label:'類別',type:'select',opts:T().categories.map(c=>({v:c.id,l:c.name}))},{k:'must',label:'必去',type:'check',text:'標記為「必去」'},{k:'note',label:'備註／推薦理由',type:'textarea'},{k:'url',label:'Google Maps 連結（選填，「Google」按鈕會開這個）',full:1,ph:'https://maps.app.goo.gl/…'},{k:'loc',label:'位置',type:'latlng'}];
+const spotFields=()=>[{k:'url',label:'Google Maps 連結',full:1,ph:'貼上 Google Maps 分享的連結，會自動帶入座標'},{k:'name',label:'名稱',full:1},{k:'local',label:'當地名稱／地址',full:1},{k:'cat',label:'類別',type:'select',opts:T().categories.map(c=>({v:c.id,l:c.name}))},{k:'must',label:'必去',type:'check',text:'標記為「必去」'},{k:'note',label:'備註／推薦理由',type:'textarea'},{k:'loc',label:'位置',type:'latlng'}];
 const stopFields=(dayI)=>{const t=T();return [
   {k:'day',label:'哪一天',type:'select',opts:t.days.map((d,i)=>({v:i,l:`DAY ${i+1} · ${md(dayDate(t,i))} ${d.title||''}`}))},
   {k:'tmode',label:'什麼時候去',type:'select',opts:[{v:'none',l:'先放著（候選）'},{v:'order',l:'排進行程，先不填時間（之後拖曳排順序）'},{v:'slot',l:'大概時段（上午／下午／晚上）'},{v:'exact',l:'精確時間'}]},
