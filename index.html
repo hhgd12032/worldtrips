@@ -863,7 +863,7 @@ body.is-dragging *{cursor:grabbing!important}
   <section class="sec" id="spots" data-view="spots">
     <div class="sec-head">
       <div><span class="eyebrow">04 · Pocket List</span><h2>景點口袋名單</h2></div>
-      <div class="sec-tools"><button class="btn sm edit-only owner-only" data-act="cat-manage">管理類別</button><button class="btn sm solid edit-only" data-act="spot-add">＋ 新增景點</button></div>
+      <div class="sec-tools"><button class="btn sm edit-only owner-only" data-act="cat-manage">管理類別</button><button class="btn sm edit-only" data-act="spot-import">匯入景點</button><button class="btn sm solid edit-only" data-act="spot-add">＋ 新增景點</button></div>
     </div>
     <div id="spotsBody"></div>
   </section>
@@ -2029,6 +2029,42 @@ function editSpot(s){const t=T(),isNew=!s;s=s||{id:uid('s'),cat:S.ui.spotCat&&S.
   openForm({title:isNew?'新增景點':'編輯景點',fields:spotFields(),data:s,onSave:o=>{if(!o.name){toast('請輸入名稱');return false}
     const n={...s,name:o.name,local:o.local,cat:o.cat,must:o.must,note:o.note,url:o.url};if(num(o.lat)&&num(o.lng)){n.lat=o.lat;n.lng=o.lng}else{delete n.lat;delete n.lng}
     const cur=T().spots.find(x=>x.id===s.id);if(cur)Object.assign(cur,n);else T().spots.push(n)},onDelete:isNew?null:()=>delSpot(s.id)})}
+/* 匯入景點：貼上 JSON 名單（通常由 Claude 研究後整理） */
+function importParse(txt){txt=String(txt||'').trim().replace(/^```(?:json)?\s*|\s*```$/g,'');
+  const a=txt.indexOf('['),b=txt.lastIndexOf(']');let arr=null;
+  try{const j=JSON.parse(txt);arr=Array.isArray(j)?j:(j.spots||null)}catch(e){if(a>=0&&b>a){try{arr=JSON.parse(txt.slice(a,b+1))}catch(_){}}}
+  return Array.isArray(arr)?arr.filter(x=>x&&typeof x==='object'&&String(x.name||x.local||'').trim()):null}
+function importPlan(arr){const t=T(),norm=v=>String(v||'').trim().toLowerCase();
+  const have=new Set(t.spots.flatMap(s=>[norm(s.name),norm(s.local)]).filter(Boolean));
+  const newCats=[],items=[],dup=[];
+  arr.forEach(x=>{const name=String(x.name||x.local).trim(),local=String(x.local||'').trim();
+    if(have.has(norm(name))||(local&&have.has(norm(local)))){dup.push(name);return}have.add(norm(name));if(local)have.add(norm(local));
+    const cq=norm(x.cat||x.category);let c=t.categories.find(c=>norm(c.id)===cq||norm(c.name)===cq)||newCats.find(c=>norm(c.name)===cq);
+    if(!c&&cq&&isOwnerish()){c={id:uid('c'),name:String(x.cat||x.category).trim(),color:PALETTE[(t.categories.length+newCats.length)%PALETTE.length],icon:'pin'};newCats.push(c)}
+    if(!c)c=t.categories[0]||{id:''};
+    const sp={id:uid('s'),name,local,cat:c.id,must:!!x.must,note:String(x.note||'').trim(),url:String(x.url||'').trim()};
+    const la=+x.lat,ln=+x.lng;if(isFinite(la)&&isFinite(ln)&&x.lat!=null&&x.lng!=null&&Math.abs(la)<=90&&Math.abs(ln)<=180&&!(la===0&&ln===0)){sp.lat=la;sp.lng=ln}
+    items.push(sp)});
+  return{items,dup,newCats}}
+function isOwnerish(){return !!CLOUD.owner||!CLOUD.on}
+function spotImport(){const t=T();
+  openModal(`<div class="m-head"><h3>匯入景點</h3><button class="ibtn plain" data-act="close-modal">${ic('x')}</button></div>
+    <div class="m-body"><div class="field full"><label>貼上景點名單</label><textarea class="inp mono" id="impTxt" style="min-height:220px;font-size:13px" placeholder='[{"name":"中文名稱","local":"當地名稱","cat":"咖啡廳","must":false,"note":"推薦理由","lat":21.03,"lng":105.85}]'></textarea>
+      <div class="hint" id="impHint">請 Claude 幫你研究景點後，把它給的名單整段貼在這裡。</div>
+      <button type="button" class="btn sm" style="margin-top:8px" id="impFmt">${ic('copy')}複製格式說明（貼給 Claude）</button></div></div>
+    <div class="m-foot"><button class="btn" data-act="close-modal">取消</button><button class="btn solid" id="impGo" disabled>匯入</button></div>`);
+  let plan=null;const hint=$('#impHint'),go=$('#impGo');
+  $('#impTxt').oninput=e=>{const arr=importParse(e.target.value);plan=null;go.disabled=true;
+    if(!e.target.value.trim()){hint.textContent='請 Claude 幫你研究景點後，把它給的名單整段貼在這裡。';return}
+    if(!arr||!arr.length){hint.textContent='讀不到景點，請確認是整段完整貼上。';return}
+    plan=importPlan(arr);const noLL=plan.items.filter(s=>!hasLL(s)).length;
+    hint.innerHTML=`可匯入 <b>${plan.items.length}</b> 個景點`+(plan.dup.length?`，略過 ${plan.dup.length} 個已存在的（${esc(plan.dup.slice(0,3).join('、'))}${plan.dup.length>3?'…':''}）`:'')+(plan.newCats.length?`，會新增類別：${esc(plan.newCats.map(c=>c.name).join('、'))}`:'')+(noLL?`，其中 ${noLL} 個沒有座標`:'')+'。';
+    go.disabled=!plan.items.length};
+  $('#impFmt').onclick=()=>copyText(`請幫我研究「${t.city||t.name}」值得去的景點，整理成 JSON 陣列給我（只要 JSON）。每個景點格式：
+{"name":"中文名稱","local":"當地語言名稱或地址","cat":"類別","must":true/false,"note":"一兩句推薦理由","lat":緯度,"lng":經度,"url":"Google Maps 連結（可省略）"}
+類別請從這些挑：${t.categories.map(c=>c.name).join('、')}${isOwnerish()?'（真的不適合也可以用新的類別名稱）':''}。`);
+  go.onclick=()=>{if(!plan||!plan.items.length)return;const T0=T();plan.newCats.forEach(c=>T0.categories.push(c));plan.items.forEach(s=>T0.spots.push(s));
+    closeModal();commit();toast(`已匯入 ${plan.items.length} 個景點`)}}
 function delSpot(id){const t=T(),s=t.spots.find(x=>x.id===id),used=t.days.reduce((a,d)=>a+d.stops.filter(x=>x.ref===id).length,0);
   confirmBox(`確定刪除「${esc(s.name)}」？${used?`<br><small>它目前排在行程中 ${used} 次，也會一併移除。</small>`:''}`,()=>{t.spots=t.spots.filter(x=>x.id!==id);t.days.forEach(d=>d.stops=d.stops.filter(x=>x.ref!==id));commit();toast('已刪除')},'刪除')}
 function editSimple(kind,key,item,title,defaults={}){const isNew=!item;item=item||{id:uid(kind[0]),...defaults};
@@ -2196,7 +2232,7 @@ const A={
  'flight-del':el=>confirmBox('確定刪除這張航班卡？',()=>{T().flights=T().flights.filter(x=>x.id!==el.dataset.id);commit()},'刪除'),
  'transfer-add':()=>editSimple('transfer','transfers',null,'接送／交通',{status:'待確認'}),'transfer-edit':el=>editSimple('transfer','transfers',T().transfers.find(x=>x.id===el.dataset.id),'接送／交通'),
  'transfer-del':el=>confirmBox('確定刪除？',()=>{T().transfers=T().transfers.filter(x=>x.id!==el.dataset.id);commit()},'刪除'),
- 'spot-add':()=>editSpot(null),'spot-edit':el=>editSpot(T().spots.find(x=>x.id===el.dataset.id)),'spot-del':el=>delSpot(el.dataset.id),
+ 'spot-add':()=>editSpot(null),'spot-import':()=>spotImport(),'spot-edit':el=>editSpot(T().spots.find(x=>x.id===el.dataset.id)),'spot-del':el=>delSpot(el.dataset.id),
  'spot-focus':el=>{const s=T().spots.find(x=>x.id===el.dataset.id);if(s){const h=new Set(S.ui.hiddenCats||[]);if(h.has(s.cat)){h.delete(s.cat);S.ui.hiddenCats=[...h];renderHeroMap()}focusHero(s.lat,s.lng)}},
  'spot-sched':el=>editStop({id:uid('st'),ref:el.dataset.id},S.ui.day||0,true),
  'cat-filter':el=>{S.ui.spotCat=el.dataset.id;renderSpots()},'must-toggle':()=>{S.ui.must=!S.ui.must;renderSpots()},
