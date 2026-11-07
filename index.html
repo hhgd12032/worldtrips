@@ -796,6 +796,15 @@ body.is-dragging *{cursor:grabbing!important}
 .imp-step b{display:block;font-size:14.5px;color:var(--ink)}
 .imp-step small{display:block;font-size:12px;color:var(--muted,#8a7f78);margin-top:2px}
 .imp-step .btn{margin-top:8px}
+/* v13: 回到頂部／底部 */
+.scrollbtns{position:fixed;right:16px;bottom:24px;z-index:940;display:flex;flex-direction:column;gap:8px;opacity:0;pointer-events:none;transform:translateY(8px);transition:.2s}
+.scrollbtns.show{opacity:1;pointer-events:auto;transform:none}
+.scrollbtns button{width:42px;height:42px;border-radius:50%;border:1.5px solid var(--ink);background:var(--paper);color:var(--ink);display:grid;place-items:center;cursor:pointer;box-shadow:0 3px 0 var(--ink)}
+.scrollbtns button:active{transform:translateY(2px);box-shadow:0 1px 0 var(--ink)}
+.scrollbtns svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.scrollbtns.at-end [data-act=scroll-bottom]{opacity:.35;pointer-events:none}
+@media (max-width:1020px){.scrollbtns{right:14px;bottom:calc(88px + env(safe-area-inset-bottom))}.scrollbtns button{width:40px;height:40px}}
+body.typing .scrollbtns,body:has(#ovl.show) .scrollbtns{display:none}
 
 </style>
 </head>
@@ -903,6 +912,7 @@ body.is-dragging *{cursor:grabbing!important}
   </footer>
 </main>
 
+<div class="scrollbtns" id="scrollBtns"><button type="button" data-act="scroll-top" aria-label="回到最上面" title="回到最上面"><svg viewBox="0 0 24 24" class="i"><path d="M12 19V5"/><path d="m6 11 6-6 6 6"/></svg></button><button type="button" data-act="scroll-bottom" aria-label="到最下面" title="到最下面"><svg viewBox="0 0 24 24" class="i"><path d="M12 5v14"/><path d="m6 13 6 6 6-6"/></svg></button></div>
 <nav class="tabbar" id="tabbar">
   <a href="#overview" data-sec="overview"><svg class="i" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg>總覽</a>
   <a href="#days" data-sec="days"><svg class="i" viewBox="0 0 24 24"><circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/></svg>行程</a>
@@ -2243,7 +2253,7 @@ const A={
  'flight-del':el=>confirmBox('確定刪除這張航班卡？',()=>{T().flights=T().flights.filter(x=>x.id!==el.dataset.id);commit()},'刪除'),
  'transfer-add':()=>editSimple('transfer','transfers',null,'接送／交通',{status:'待確認'}),'transfer-edit':el=>editSimple('transfer','transfers',T().transfers.find(x=>x.id===el.dataset.id),'接送／交通'),
  'transfer-del':el=>confirmBox('確定刪除？',()=>{T().transfers=T().transfers.filter(x=>x.id!==el.dataset.id);commit()},'刪除'),
- 'spot-add':()=>editSpot(null),'spot-import':()=>spotImport(),'spot-edit':el=>editSpot(T().spots.find(x=>x.id===el.dataset.id)),'spot-del':el=>delSpot(el.dataset.id),
+ 'spot-add':()=>editSpot(null),'scroll-top':()=>scrollTo({top:0,behavior:'smooth'}),'scroll-bottom':()=>scrollTo({top:document.documentElement.scrollHeight,behavior:'smooth'}),'spot-import':()=>spotImport(),'spot-edit':el=>editSpot(T().spots.find(x=>x.id===el.dataset.id)),'spot-del':el=>delSpot(el.dataset.id),
  'spot-focus':el=>{const s=T().spots.find(x=>x.id===el.dataset.id);if(s){const h=new Set(S.ui.hiddenCats||[]);if(h.has(s.cat)){h.delete(s.cat);S.ui.hiddenCats=[...h];renderHeroMap()}focusHero(s.lat,s.lng)}},
  'spot-sched':el=>editStop({id:uid('st'),ref:el.dataset.id},S.ui.day||0,true),
  'cat-filter':el=>{S.ui.spotCat=el.dataset.id;renderSpots()},'must-toggle':()=>{S.ui.must=!S.ui.must;renderSpots()},
@@ -2319,6 +2329,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closeD
 function navSpy(){const ids=['overview','flights','weather','days','spots','stay','todo','split'];const io=new IntersectionObserver(es=>{if(layout()==='tabs')return;es.forEach(en=>{if(en.isIntersecting){const id=en.target.id;$$('#nav a').forEach(a=>a.classList.toggle('on',a.getAttribute('href')==='#'+id));
   const map={overview:'overview',flights:'overview',weather:'overview',days:'days',spots:'spots',stay:'stay',todo:'todo',split:'split'};$$('#tabbar a').forEach(a=>a.classList.toggle('on',a.dataset.sec===map[id]))}})},{rootMargin:'-45% 0px -50% 0px'});ids.forEach(id=>{const el=document.getElementById(id);el&&io.observe(el)})}
 
+(()=>{let raf=0;const upd=()=>{raf=0;const y=scrollY,max=document.documentElement.scrollHeight-innerHeight,b=document.getElementById('scrollBtns');if(!b)return;b.classList.toggle('show',max>600&&y>300);b.classList.toggle('at-end',y>max-80)};addEventListener('scroll',()=>{if(!raf)raf=requestAnimationFrame(upd)},{passive:true});addEventListener('resize',upd);setTimeout(upd,500)})();
 document.addEventListener('focusin',e=>{if(e.target.matches('input,textarea,select'))document.body.classList.add('typing')});
 document.addEventListener('focusout',()=>setTimeout(()=>{const a=document.activeElement;if(!a||!a.matches('input,textarea,select'))document.body.classList.remove('typing')},120));
 (function(){const i=$('#gq');if(!i)return;i.addEventListener('input',()=>{S.ui.q=i.value;if(i.value&&layout()==='tabs'&&S.ui.view!=='spots')location.hash='#spots';else if(i.value&&layout()!=='tabs')document.getElementById('spots').scrollIntoView({behavior:'smooth'});renderSpots()});
