@@ -928,6 +928,7 @@ window.FIREBASE_CONFIG = {
   messagingSenderId: "633070734894",
   appId: "1:633070734894:web:156943f755aa275dfd19bf"
 };
+window.LINK_RESOLVER = "https://maps-link.hhgd12032.workers.dev";
 /*FIREBASE_CONFIG_END*/
 </script>
 <script>
@@ -1855,8 +1856,8 @@ async function geocode(q){
 let pickerSet=null;
 
 /* 短網址解析器（Cloudflare Worker）與景點搜尋 */
-const resolverUrl=()=>(T().resolver||window.LINK_RESOLVER||'').trim();
-async function resolveLink(url){const base=resolverUrl();if(!base||!url)return null;try{const r=await fetch(base+(base.includes('?')?'&':'?')+'u='+encodeURIComponent(url));if(!r.ok)return null;const j=await r.json();return j&&!j.error?j:null}catch(e){return null}}
+const resolverUrl=()=>{let g='';try{g=localStorage.getItem('tripdesk.resolver')||''}catch(e){}return (T().resolver||g||window.LINK_RESOLVER||'').trim()};
+async function resolveLink(url){const base=resolverUrl();if(!base||!url)return null;try{const r=await fetch(base+(base.includes('?')?'&':'?')+'v=3&u='+encodeURIComponent(url),{cache:'no-store'});if(!r.ok)return null;const j=await r.json();return j&&!j.error?j:null}catch(e){return null}}
 async function findPlace(q,name){
   const c=T().center;
   try{const r=await fetch(`https://photon.komoot.io/api/?limit=1&lat=${c[0]}&lon=${c[1]}&q=${encodeURIComponent(q)}`);const j=await r.json();if(j.features&&j.features.length){const f=j.features[0].geometry.coordinates;if(km({lat:c[0],lng:c[1]},{lat:f[1],lng:f[0]})<300)return{lat:f[1],lng:f[0]}}}catch(e){}
@@ -1958,7 +1959,8 @@ function linkAuto(form){
       if(!pos&&resolverUrl()){hint.textContent='讀取 Google Maps 連結中…';const x=await resolveLink(v);if(my!==seq)return;
         if(x){if(num(x.lat))pos=[x.lat,x.lng];name=name||x.name;addr=x.address||''}}
       fill('name',deName(name));fill(k==='gmap'?'address':'local',deName(addr));
-      if(pos&&pickerSet){pickerSet(pos[0],pos[1],true,16);hint.textContent='已從連結帶入座標 ✓'}
+      let approx=false;if(!pos&&name){hint.textContent='找位置中…';const p=await findPlace(deName(addr)||deName(name),deName(name));if(my!==seq)return;if(p){pos=[p.lat,p.lng];approx=true}}
+      if(pos&&pickerSet){pickerSet(pos[0],pos[1],true,16);hint.textContent=approx?'已用名稱找到大概位置，請在地圖確認':'已從連結帶入座標 ✓'}
       else hint.textContent=resolverUrl()?'這個連結讀不到座標，請在下方地圖點位置。':'短網址需要先在後台設定「短網址解析器」才讀得到座標。'};
     el.addEventListener('input',()=>{clearTimeout(tm);tm=setTimeout(go,350)});el.addEventListener('change',go)})}
 function setupPicker(d){
@@ -2137,9 +2139,9 @@ function renderDrawer(){
       <p class="hint" style="margin:8px 0 0">App 分頁：點下方（桌機在上方）按鈕切換內容，適合旅途中用手機查。一頁式：全部內容往下滑，適合出發前整體檢查。</p>
     </div>
     <div class="dr-sec owner-only"><h4><span class="mono">G</span>Google Maps 短網址解析器</h4>
-      <div class="share-box" style="margin-top:0"><input class="inp" id="resolverIn" placeholder="https://maps-link.你的帳號.workers.dev" value="${esc(t.resolver||'')}"><button class="btn sm solid" data-act="resolver-save">儲存</button></div>
+      <div class="share-box" style="margin-top:0"><input class="inp" id="resolverIn" placeholder="https://maps-link.你的帳號.workers.dev" value="${esc(resolverUrl())}"><button class="btn sm solid" data-act="resolver-save">儲存</button></div>
       <p class="hint" style="margin:8px 0 0">設定後，貼上 Google Maps 分享的短網址（maps.app.goo.gl）就能自動帶入名稱和精確座標。設定方式見 SETUP.md 第 7 步。</p>
-      ${(()=>{const n=t.spots.filter(s=>!hasLL(s)&&s.url).length;return n&&t.resolver?`<button class="btn sm" style="margin-top:8px" data-act="backfill">${ic('pin')}幫 ${n} 個有連結但沒座標的景點補座標</button>`:''})()}
+      ${(()=>{const n=t.spots.filter(s=>!hasLL(s)&&s.url).length;return n&&resolverUrl()?`<button class="btn sm" style="margin-top:8px" data-act="backfill">${ic('pin')}幫 ${n} 個有連結但沒座標的景點補座標</button>`:''})()}
     </div>
     <div class="dr-sec owner-only"><h4><span class="mono">03</span>城市（多城市旅行）<button class="btn sm" style="margin-left:auto" data-act="city-add">${ic('plus')}新增</button></h4>
       ${t.cities.map((c,k)=>`<div class="cat-row"><span class="cat-ic" style="--c:${k?'var(--leaf)':'var(--pop)'}">${ic('pin')}</span><span>${esc(c.name)} <small class="mono" style="color:var(--muted)">${k?'':'主要城市 · '}${t.days.filter(d=>cityOf(d.city).id===c.id).length} 天</small></span><button class="ibtn sm plain" data-act="city-edit" data-id="${c.id}">${ic('pencil')}</button>${k?`<button class="ibtn sm plain" data-act="city-del" data-id="${c.id}">${ic('trash')}</button>`:''}</div>`).join('')}
@@ -2302,7 +2304,7 @@ const A={
  'city-jump':el=>{const c=cityOf(el.dataset.id);if(heroMap&&hasLL(c))heroMap.flyTo([c.lat,c.lng],c.id===T().cities[0].id?T().zoom:13,{duration:.8})},
  'spot-city':el=>{S.ui.spotCity=el.dataset.id;renderSpots()},
  'copy-name':(el,e)=>{e.stopPropagation();copyText(el.dataset.v||'')},
- 'resolver-save':async()=>{const v=$('#resolverIn').value.trim().replace(/\/$/,'');T().resolver=v;commit();if(!v)return toast('已清除');toast('測試中…');const x=await resolveLink('https://www.google.com/maps/place/Hoan+Kiem+Lake/@21.0287,105.8523,17z');toast(x?'已儲存，解析器運作正常 ✓':'已儲存，但測試失敗：請確認網址是否正確');renderDrawer()},
+ 'resolver-save':async()=>{const v=$('#resolverIn').value.trim().replace(/\/$/,'');T().resolver=v;try{v?localStorage.setItem('tripdesk.resolver',v):localStorage.removeItem('tripdesk.resolver')}catch(e){}commit();if(!v)return toast('已清除');toast('測試中…');const x=await resolveLink('https://www.google.com/maps/place/Hoan+Kiem+Lake/@21.0287,105.8523,17z');toast(x?'已儲存，解析器運作正常 ✓':'已儲存，但測試失敗：請確認網址是否正確');renderDrawer()},
  'backfill':async()=>{const list=T().spots.filter(s=>!hasLL(s)&&s.url);let ok=0;toast(`補座標中（${list.length}）…`);for(const s of list){const x=await resolveLink(s.url);const cur=T().spots.find(y=>y.id===s.id);if(x&&num(x.lat)&&cur){cur.lat=x.lat;cur.lng=x.lng;if(!cur.local&&x.address)cur.local=x.address;ok++}}commit();renderDrawer();toast(`完成：${ok}/${list.length} 個景點已補上座標`)},
  'map-toggle':el=>setMap(el.dataset.k,!mapOpen(el.dataset.k)),
  'fl-collapse':()=>{S.ui.flCol=!S.ui.flCol;save();renderFlights()},
