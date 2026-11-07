@@ -1874,7 +1874,7 @@ function parseGmaps(text){
     const pm=u.match(/\/maps\/place\/([^/@?]+)/);if(pm)name=pm[1].trim();
     const cm=u.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/)||u.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/)||u.match(/[?&](?:q|query|ll|destination)=(-?\d+\.\d+)(?:,|%2C)\s*(-?\d+\.\d+)/);
     if(cm){lat=+cm[1];lng=+cm[2]}
-    if(!name){const qm=u.match(/[?&](?:q|query)=([^&]+)/);if(qm&&!/^-?\d/.test(qm[1]))name=qm[1].trim()}}
+    if(!name){const qm=u.match(/[?&](?:q|query)=([^&]+)/);if(qm&&!/^-?\d+\.\d+\s*(,|%2C)/.test(qm[1])){const p=qm[1].split(',');name=p[0].trim();if(p.length>1)addr=p.slice(1).join(',').trim()}}}
   const rest=text.replace(urlM?urlM[0]:'','').split(/\n+/).map(s=>s.trim()).filter(Boolean).flatMap(s=>s.split(/\s+[·•]\s+/));
   if(rest.length){if(!name)name=rest[0];else if(rest[0]!==name&&!addr)addr=rest[0];if(rest[1]&&!addr)addr=rest[1];if(rest[0]===name&&rest[1])addr=rest[1]}
   return{name,addr,url,lat,lng,short:/goo\.gl|maps\.app/.test(url)};
@@ -1959,7 +1959,7 @@ function linkAuto(form){
       if(!pos&&resolverUrl()){hint.textContent='讀取 Google Maps 連結中…';const x=await resolveLink(v);if(my!==seq)return;
         if(x){if(num(x.lat))pos=[x.lat,x.lng];name=name||x.name;addr=x.address||''}}
       fill('name',deName(name));fill(k==='gmap'?'address':'local',deName(addr));
-      let approx=false;if(!pos&&name){hint.textContent='找位置中…';const p=await findPlace(deName(addr)||deName(name),deName(name));if(my!==seq)return;if(p){pos=[p.lat,p.lng];approx=true}}
+      let approx=false;if(!pos&&name){hint.textContent='找位置中…';const ad=deName(addr).replace(/\bP\.\s*/g,'Phố ').replace(/\s*\d{5,6}\s*/g,' ').trim();const p=await findPlace(ad||deName(name),deName(name));if(my!==seq)return;if(p){pos=[p.lat,p.lng];approx=true}}
       if(pos&&pickerSet){pickerSet(pos[0],pos[1],true,16);hint.textContent=approx?'已用名稱找到大概位置，請在地圖確認':'已從連結帶入座標 ✓'}
       else hint.textContent=resolverUrl()?'這個連結讀不到座標，請在下方地圖點位置。':'短網址需要先在後台設定「短網址解析器」才讀得到座標。'};
     el.addEventListener('input',()=>{clearTimeout(tm);tm=setTimeout(go,350)});el.addEventListener('change',go)})}
