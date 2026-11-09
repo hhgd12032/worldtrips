@@ -467,7 +467,7 @@ input[type=date].inp,input[type=time].inp{min-height:42px}
   .m-foot{padding-bottom:calc(14px + env(safe-area-inset-bottom))}
   .bal-row{grid-template-columns:70px 1fr 96px}
   .xrow{grid-template-columns:auto minmax(0,1fr) auto;}
-  .xrow .acts{grid-column:3}
+  .xrow .acts,.xrow .x-acts{grid-column:3;justify-self:end}
   .spot-bar .grow{justify-content:flex-start}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
@@ -809,6 +809,15 @@ body.typing .scrollbtns,body:has(#ovl.show) .scrollbtns{display:none}
 .day-memo{display:flex;align-items:flex-start;gap:6px;width:100%;box-sizing:border-box;margin:-6px 0 14px;padding:7px 12px;font-size:13.5px;line-height:1.5;color:var(--ink2);background:var(--paper);border:1.2px dashed var(--hair);border-radius:10px}
 .day-memo .i{flex:none;width:14px;height:14px;margin-top:3px;opacity:.6}
 .day-memo span{min-width:0;flex:1;text-align:left}
+/* v15: 分帳編輯 */
+.xrow .x-acts{display:flex;gap:2px}
+.xrow.editing{background:color-mix(in srgb,var(--sun) 22%,transparent);border-radius:10px;padding-left:8px;padding-right:4px}
+/* v16: 待辦編輯 */
+.titem .tx-edit{flex:1;min-width:0;height:34px;padding:4px 10px;font-size:15px}
+.titem.editing{cursor:default}
+.titem .ibtn{pointer-events:none}
+.titem:hover .ibtn,body.editing .titem .ibtn{pointer-events:auto}
+@media (hover:none){.titem:hover .ibtn{opacity:0;pointer-events:none}body.editing .titem .ibtn{opacity:1;pointer-events:auto}}
 
 </style>
 </head>
@@ -1133,6 +1142,7 @@ const WK='日一二三四五六';const wk=s=>WK[D(s).getDay()];
 const todayIso=()=>iso(new Date());
 const num=v=>typeof v==='number'&&isFinite(v);
 const hasLL=o=>o&&num(o.lat)&&num(o.lng);
+let expEdit=null;
 const km=(a,b)=>{const R=6371,r=Math.PI/180,dLa=(b.lat-a.lat)*r,dLo=(b.lng-a.lng)*r;const x=Math.sin(dLa/2)**2+Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin(dLo/2)**2;return 2*R*Math.asin(Math.sqrt(x))};
 const gmap=(lat,lng)=>`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
 const gdir=(pts,mode)=>{if(pts.length<2)return '';const f=p=>`${p.lat},${p.lng}`;let u=`https://www.google.com/maps/dir/?api=1&origin=${f(pts[0])}&destination=${f(pts[pts.length-1])}`;const mid=pts.slice(1,-1).slice(0,9);if(mid.length)u+=`&waypoints=${encodeURIComponent(mid.map(f).join('|'))}`;return u+`&travelmode=${mode||'walking'}`};
@@ -1744,6 +1754,7 @@ function renderTodo(){
       <span class="tx">${esc(it.text)}${s.each?`<span class="each-tag">每人</span>`:''}</span>
       ${s.each?`<span class="who-done" title="${s.n}/${s.total} 人完成">${t.members.filter(m=>s.by[m.id]).map(m=>avaHtml(m.animal,'sm')).join('')}<small>${s.n}/${s.total}</small></span>`:''}
       <button class="btn sm mode-btn edit-only" data-act="todo-mode" data-g="${g.id}" data-id="${it.id}" title="切換共用／每人各自">${s.each?'改共用':'改每人'}</button>
+      <button class="ibtn sm plain" data-act="todo-edit" data-g="${g.id}" data-id="${it.id}" title="編輯">${ic('pencil')}</button>
       <button class="ibtn sm plain" data-act="todo-del" data-g="${g.id}" data-id="${it.id}" title="刪除">${ic('x')}</button></div>`}).join('')}
     <form class="tadd" data-g="${g.id}"><input placeholder="＋ 新增一項，按 Enter" maxlength="120"><button type="button" class="chip ${((S.ui.tEach||{})[g.id])?'on':''}" data-act="tadd-mode" data-g="${g.id}">${ic('users')}每人各自</button></form>
   </div>`).join('')}</div>`;
@@ -1785,7 +1796,7 @@ function renderSplit(){
   $('#splitBody').innerHTML=`
   <div style="display:flex;flex-direction:column;gap:16px">
     <form class="card panel" id="expForm">
-      <h3>${ic('plus')}新增一筆支出</h3>
+      <h3>${expEdit?ic('pencil')+'編輯這筆支出':ic('plus')+'新增一筆支出'}</h3>
       <div class="fgrid">
         <div class="field"><label>日期</label><input class="inp" type="date" name="date" value="${defDate}"></div>
         <div class="field"><label>幣別</label><div class="seg" style="align-self:flex-start">${[cur.local,cur.home].map(c=>`<button type="button" class="${ui.cur===c?'on':''}" data-act="exp-cur" data-c="${c}">${c} ${c===cur.local?cur.localSymbol:cur.homeSymbol}</button>`).join('')}</div></div>
@@ -1794,7 +1805,7 @@ function renderSplit(){
         <div class="field full"><label>誰先付</label><div class="pick">${t.members.map(m=>`<button type="button" class="${ui.payer===m.id?'on':''}" data-act="exp-payer" data-id="${m.id}">${avaHtml(m.animal,'sm')}${esc(m.name)}</button>`).join('')}</div></div>
         <div class="field full"><label style="display:flex;justify-content:space-between">分給誰 <a href="#" data-act="exp-all" style="text-transform:none;letter-spacing:0">全選</a></label><div class="pick">${t.members.map(m=>`<button type="button" class="${shares.includes(m.id)?'on':''}" data-act="exp-share" data-id="${m.id}">${avaHtml(m.animal,'sm')}${esc(m.name)}</button>`).join('')}</div></div>
       </div>
-      <button class="btn mango" style="margin-top:14px;width:100%;justify-content:center" type="submit">${ic('plus')}記一筆</button>
+      ${expEdit?`<div style="display:flex;gap:8px;margin-top:14px"><button class="btn" type="button" data-act="exp-cancel" style="flex:1;justify-content:center">取消</button><button class="btn mango" type="submit" style="flex:2;justify-content:center">${ic('check')}儲存修改</button></div>`:`<button class="btn mango" style="margin-top:14px;width:100%;justify-content:center" type="submit">${ic('plus')}記一筆</button>`}
     </form>
     <div class="card panel">
       <h3>${ic('swap')}快速換算 <span class="r"><span class="hint">參考匯率，請自行更新</span></span></h3>
@@ -1811,14 +1822,16 @@ function renderSplit(){
     <div class="card panel">
       <h3>${ic('file')}支出明細 <span class="r"><button class="btn sm" data-act="ledger-copy">${ic('copy')}匯出</button><button class="btn sm" data-act="ledger-import">${ic('upload')}匯入</button></span></h3>
       ${Object.keys(totals).length?`<div class="hint" style="margin:-4px 0 8px">合計 ${Object.entries(totals).map(([c,v])=>`<b class="mono" style="color:var(--ink)">${money(v,c)}</b>`).join(' ＋ ')}</div>`:''}
-      <div class="xlist">${exps.length?exps.map(e=>`<div class="xrow"><div class="dt">${e.date?md(e.date):''}<br>${e.date?'週'+wk(e.date):''}</div><div class="it"><b>${esc(e.item)}</b><small>${esc(mem(e.payer))} 先付 · ${(e.shares||[]).length} 人分</small></div><div class="am">${money(+e.amount,e.cur)}</div><button class="ibtn sm plain acts" data-act="exp-del" data-id="${e.id}">${ic('trash')}</button></div>`).join(''):'<div class="hint">還沒有支出紀錄。</div>'}</div>
+      <div class="xlist">${exps.length?exps.map(e=>`<div class="xrow${expEdit===e.id?' editing':''}"><div class="dt">${e.date?md(e.date):''}<br>${e.date?'週'+wk(e.date):''}</div><div class="it"><b>${esc(e.item)}</b><small>${esc(mem(e.payer))} 先付 · ${(e.shares||[]).length} 人分</small></div><div class="am">${money(+e.amount,e.cur)}</div><span class="x-acts"><button class="ibtn sm plain" data-act="exp-edit" data-id="${e.id}" title="編輯">${ic('pencil')}</button><button class="ibtn sm plain" data-act="exp-del" data-id="${e.id}" title="刪除">${ic('trash')}</button></span></div>`).join(''):'<div class="hint">還沒有支出紀錄。</div>'}</div>
     </div>
   </div>`;
   const conv=()=>{const r=+$('#rateIn').value||1,v=+$('#convIn').value;S.ui.conv=$('#convIn').value;$('#convOut').textContent=v?money(v/r,cur.home):'—'};
   $('#rateIn').onchange=()=>{const r=+$('#rateIn').value;if(r>0){T().currency.rate=r;save();renderSplit()}};$('#rateIn').oninput=conv;$('#convIn').oninput=conv;conv();
   $('#expForm').onsubmit=e=>{e.preventDefault();const fd=new FormData(e.target),amt=+fd.get('amount');
     if(!(amt>0))return toast('請輸入金額');if(!ui.payer)return toast('請先在後台新增旅伴');
-    T().expenses.push({id:uid('e'),ts:Date.now(),date:fd.get('date'),cur:ui.cur,item:String(fd.get('item')).trim(),amount:amt,payer:ui.payer,shares:shares.slice()});
+    const rec={date:fd.get('date'),cur:ui.cur,item:String(fd.get('item')).trim(),amount:amt,payer:ui.payer,shares:shares.slice()};
+    if(expEdit){const x=T().expenses.find(e=>e.id===expEdit);expEdit=null;ui.shares=null;if(x){Object.assign(x,rec);save();renderSplit();return toast('已更新')}}
+    T().expenses.push({id:uid('e'),ts:Date.now(),...rec});
     save();renderSplit();toast('已記下一筆')};
 }
 
@@ -2280,11 +2293,16 @@ const A={
  'hotel-add':()=>editHotel(null),'hotel-edit':el=>editHotel(T().hotels.find(x=>x.id===el.dataset.id)),
  'hotel-del':el=>{const h=T().hotels.find(x=>x.id===el.dataset.id);confirmBox(`確定刪除「${esc(h.name)}」？`,()=>{T().hotels=T().hotels.filter(x=>x.id!==h.id);commit()},'刪除')},
  reveal:el=>el.classList.toggle('blur'),
- 'todo-toggle':(el,e)=>{if(e.target.closest('button'))return;const find=()=>T().todos.find(g=>g.id===el.dataset.g).items.find(i=>i.id===el.dataset.id),it=find();
+ 'todo-toggle':(el,e)=>{if(e.target.closest('button,input'))return;const find=()=>T().todos.find(g=>g.id===el.dataset.g).items.find(i=>i.id===el.dataset.id),it=find();
    if(it.each){const go=()=>{const x=find(),me=myId();x.doneBy=x.doneBy||{};if(x.doneBy[me])delete x.doneBy[me];else x.doneBy[me]=true;save();renderTodo()};if(!myId())return pickMe(go);return go()}
    it.done=!it.done;save();renderTodo()},
  'todo-mode':(el,e)=>{e.stopPropagation();const it=T().todos.find(g=>g.id===el.dataset.g).items.find(i=>i.id===el.dataset.id);if(it.each){it.each=false;it.done=todoState({...it,each:true}).done;delete it.doneBy}else{it.each=true;it.doneBy={};if(it.done&&myId())it.doneBy[myId()]=true;delete it.done}save();renderTodo()},
  'tadd-mode':el=>{S.ui.tEach=S.ui.tEach||{};S.ui.tEach[el.dataset.g]=!S.ui.tEach[el.dataset.g];save();el.classList.toggle('on',!!S.ui.tEach[el.dataset.g]);const i=el.parentElement.querySelector('input');i&&i.focus()},
+ 'todo-edit':(el,e)=>{e.stopPropagation();const row=el.closest('.titem'),tx=row&&row.querySelector('.tx');if(!tx||row.querySelector('.tx-edit'))return;
+   const find=()=>{const g=T().todos.find(g=>g.id===el.dataset.g);return g&&g.items.find(i=>i.id===el.dataset.id)},it=find();if(!it)return;
+   const inp=Object.assign(document.createElement('input'),{className:'inp tx-edit',value:it.text,maxLength:120});tx.replaceWith(inp);row.classList.add('editing');inp.focus();inp.select();
+   let done=false;const fin=ok=>{if(done)return;done=true;const v=inp.value.trim(),x=find();if(ok&&x&&v&&v!==x.text){x.text=v;save();toast('已更新')}renderTodo()};
+   inp.onkeydown=ev=>{if(ev.key==='Enter'){ev.preventDefault();fin(true)}else if(ev.key==='Escape')fin(false)};inp.onblur=()=>fin(true);inp.onclick=ev=>ev.stopPropagation()},
  'todo-del':el=>{const g=T().todos.find(g=>g.id===el.dataset.g),it=g&&g.items.find(i=>i.id===el.dataset.id);if(!it)return;confirmBox(`刪除待辦「${esc(it.text)}」？`,()=>{const G=T().todos.find(x=>x.id===el.dataset.g);if(G){G.items=G.items.filter(i=>i.id!==it.id);save();renderTodo()}},'刪除')},
  'todo-reset':()=>confirmBox('把所有項目都取消勾選？（包含每位旅伴的勾選）',()=>{T().todos.forEach(g=>g.items.forEach(i=>{i.done=false;if(i.each)i.doneBy={}}));save();renderTodo()},'全部取消',false),
  'group-add':()=>editSimple('group','todos',null,'清單',{items:[]}),'group-edit':el=>{const id=el.dataset.id,g=T().todos.find(x=>x.id===id);openForm({title:'編輯清單',fields:F.group,data:g,onSave:o=>{Object.assign(T().todos.find(x=>x.id===id)||{},o)}})},
@@ -2293,7 +2311,9 @@ const A={
  'exp-payer':el=>{S.ui.exp.payer=el.dataset.id;keepExpForm(()=>renderSplit())},
  'exp-share':el=>{const t=T(),ui=S.ui.exp;let sh=ui.shares&&ui.shares.length?ui.shares.slice():t.members.map(m=>m.id);const id=el.dataset.id;sh=sh.includes(id)?sh.filter(x=>x!==id):[...sh,id];if(!sh.length)return toast('至少要有一個人分攤');ui.shares=sh;keepExpForm(()=>renderSplit())},
  'exp-all':(el,e)=>{e.preventDefault();S.ui.exp.shares=null;keepExpForm(()=>renderSplit())},
- 'exp-del':el=>{const t=T(),x=t.expenses.find(e=>e.id===el.dataset.id);confirmBox(`刪除「${esc(x.item)}」${money(+x.amount,x.cur)}？`,()=>{t.expenses=t.expenses.filter(e=>e.id!==x.id);save();renderSplit()},'刪除')},
+ 'exp-edit':el=>{const t=T(),x=t.expenses.find(e=>e.id===el.dataset.id);if(!x)return;expEdit=x.id;const ui=S.ui.exp;ui.cur=x.cur;ui.payer=x.payer;ui.shares=(x.shares||[]).slice();renderSplit();const f=$('#expForm');f.item.value=x.item||'';f.amount.value=x.amount;if(x.date)f.date.value=x.date;f.scrollIntoView({behavior:'smooth',block:'start'});setTimeout(()=>f.amount.focus({preventScroll:true}),400)},
+ 'exp-cancel':()=>{expEdit=null;S.ui.exp.shares=null;renderSplit()},
+ 'exp-del':el=>{const t=T(),x=t.expenses.find(e=>e.id===el.dataset.id);confirmBox(`刪除「${esc(x.item)}」${money(+x.amount,x.cur)}？`,()=>{t.expenses=t.expenses.filter(e=>e.id!==x.id);if(expEdit===x.id)expEdit=null;save();renderSplit()},'刪除')},
  'split-mode':el=>{S.ui.exp.mode=el.dataset.m;keepExpForm(()=>renderSplit())},
  'ledger-copy':()=>{const t=T();const o={trip:t.id,members:t.members,expenses:t.expenses};copyText(JSON.stringify(o));download(`${t.name}-分帳.json`,JSON.stringify(o,null,1))},
  'ledger-import':()=>importDialog(o=>{const t=T(),list=Array.isArray(o)?o:o.expenses;if(!Array.isArray(list))return toast('找不到分帳資料');
