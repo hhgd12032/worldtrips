@@ -805,6 +805,10 @@ body.is-dragging *{cursor:grabbing!important}
 .scrollbtns.at-end [data-act=scroll-bottom]{opacity:.35;pointer-events:none}
 @media (max-width:1020px){.scrollbtns{right:14px;bottom:calc(88px + env(safe-area-inset-bottom))}.scrollbtns button{width:40px;height:40px}}
 body.typing .scrollbtns,body:has(#ovl.show) .scrollbtns{display:none}
+/* v14: 這天的重點改成整列寬 */
+.day-memo{display:flex;align-items:flex-start;gap:6px;width:100%;box-sizing:border-box;margin:-6px 0 14px;padding:7px 12px;font-size:13.5px;line-height:1.5;color:var(--ink2);background:var(--paper);border:1.2px dashed var(--hair);border-radius:10px}
+.day-memo .i{flex:none;width:14px;height:14px;margin-top:3px;opacity:.6}
+.day-memo span{min-width:0;flex:1;text-align:left}
 
 </style>
 </head>
@@ -1668,13 +1672,13 @@ function renderDays(){
       <div style="min-width:0;flex:1">
         <h3>${esc(day.title||'還沒取名的一天')} ${day.tag?`<span class="tag dash" style="vertical-align:3px">${esc(day.tag)}</span>`:''}</h3>
         ${multiCity()||day.area?`<div class="day-area">${ic('pin')}${multiCity()?`<b>${esc(cityOf(day.city).name)}</b>${day.area?'・':''}`:''}${esc(day.area||'')}</div>`:''}
-        ${day.memo?`<div class="day-memo">${esc(day.memo)}</div>`:''}
       </div>
       <div class="day-actions">
         ${pts.length>1?`<a class="btn sm sun" href="${gdir(pts,far?'driving':'walking')}" target="_blank" rel="noopener">${ic('route')}Google 路線導航</a>`:''}
         <button class="btn sm edit-only" data-act="day-edit" data-i="${i}">${ic('pencil')}當日主題／區域</button>
       </div>
     </div>
+    ${day.memo?`<div class="day-memo">${ic('pin')}<span>${esc(day.memo)}</span></div>`:''}
     ${rows?`<ol class="tl dz-list" data-dz="tl">${rows}</ol>`:(cands.length?`<div class="tl-empty" data-dz="tl"><div class="dz-list">${ic('route')}把下方候選景點拖到這裡，排出今天的順序</div></div>`:`<div class="empty">這天還沒有行程。<br>打開「編輯」，可以一次放進好幾個景點當候選，再慢慢排時段。</div>`)}
     ${candHtml}
     <div class="add-row edit-block" style="margin-top:10px"><button class="btn sm solid" data-act="stop-bulk" data-i="${i}">${ic('plus')}一次加入多個景點</button> <button class="btn sm" data-act="stop-add" data-i="${i}">${ic('plus')}新增單一停留點</button></div>`;
