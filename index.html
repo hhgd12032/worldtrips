@@ -2053,10 +2053,13 @@ function importParse(txt){txt=String(txt||'').trim().replace(/^```(?:json)?\s*|\
   try{const j=JSON.parse(txt);arr=Array.isArray(j)?j:(j.spots||null)}catch(e){if(a>=0&&b>a){try{arr=JSON.parse(txt.slice(a,b+1))}catch(_){}}}
   return Array.isArray(arr)?arr.filter(x=>x&&typeof x==='object'&&String(x.name||x.local||'').trim()):null}
 function importPlan(arr){const t=T(),norm=v=>String(v||'').trim().toLowerCase();
+  const key=v=>String(v||'').split('·')[0].normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/gi,'d').toLowerCase().replace(/[（(].*?[)）]/g,'').replace(/[^a-z0-9\u3400-\u9fff]/g,'');
+  const exist=t.spots.map(s=>({k:[key(s.name),key(s.local)].filter(k=>k.length>=2),s}));
+  const isDup=x=>{const ks=[key(x.name),key(x.local)].filter(k=>k.length>=2);return exist.some(e=>e.k.some(a=>ks.some(b=>a===b||(Math.min(a.length,b.length)>=5&&(a.includes(b)||b.includes(a)))))||(hasLL(e.s)&&num(+x.lat)&&x.lat!=null&&km(e.s,{lat:+x.lat,lng:+x.lng})<0.04&&e.k.some(a=>ks.some(b=>a.slice(0,4)===b.slice(0,4)))))};
   const have=new Set(t.spots.flatMap(s=>[norm(s.name),norm(s.local)]).filter(Boolean));
   const newCats=[],items=[],dup=[];
   arr.forEach(x=>{const name=String(x.name||x.local).trim(),local=String(x.local||'').trim();
-    if(have.has(norm(name))||(local&&have.has(norm(local)))){dup.push(name);return}have.add(norm(name));if(local)have.add(norm(local));
+    if(have.has(norm(name))||(local&&have.has(norm(local)))||isDup({name,local,lat:x.lat,lng:x.lng})){dup.push(name);return}have.add(norm(name));if(local)have.add(norm(local));
     const cq=norm(x.cat||x.category);let c=t.categories.find(c=>norm(c.id)===cq||norm(c.name)===cq)||newCats.find(c=>norm(c.name)===cq);
     if(!c&&cq&&isOwnerish()){c={id:uid('c'),name:String(x.cat||x.category).trim(),color:PALETTE[(t.categories.length+newCats.length)%PALETTE.length],icon:'pin'};newCats.push(c)}
     if(!c)c=t.categories[0]||{id:''};
